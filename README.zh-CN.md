@@ -1,4 +1,4 @@
-# Qingmei (青梅) - 极简现代化 TypeScript Agent CLI
+# Qingmei (青袂) - 极简现代化 TypeScript Agent CLI
 
 <p align="center">
   <a href="README.md">English</a> | <b>简体中文</b>
@@ -6,7 +6,7 @@
 
 ---
 
-**Qingmei (青梅)** 是一款基于 TypeScript 和 Node.js 构建的现代化、模块化、高密度的自主 AI Agent 命令行终端工具（CLI）。它深度集成了 **Model Context Protocol (MCP)** 协议规范、具备完整的 **Skill 技能扩展体系**、支持 **4 级安全防护模式**，并拥有无 Emoji 干扰、全包围一体化外框的极客级纯文本交互体验。
+**Qingmei (青袂)** 是一款基于 TypeScript 和 Node.js 构建的现代化、模块化、高密度的自主 AI Agent 命令行终端工具（CLI）。它深度集成了 **Model Context Protocol (MCP)** 协议规范、具备完整的 **Skill 技能扩展体系**、支持 **4 级安全防护模式**，并拥有无 Emoji 干扰、全包围一体化外框的极客级纯文本交互体验。
 
 ---
 
@@ -17,15 +17,10 @@
   - 界面全屏铺满终端高与宽，外框外部保留舒适左右 Padding 留白；标题位于顶部，输入舱与状态栏锚定在底部。
   - 标题栏与输入舱之间实时展示会话与操作历史记录，超出范围支持鼠标滚轮、`PageUp`/`PageDown` 及方向键平滑滚动，不显示滚动条。
   - 状态栏实时展示上下文使用量（如 `1.8k/1M (0.2%)`），当前工作区路径下移另起一行以 `~` 相对路径精简呈现。
-
-
-
-
 - **工作区信任与路径沙箱 (Workspace Trust & Path Sandboxing)**：
   - 首次打开未信任工作区时主动阻断并弹出信任确认，未信任模式下自动锁定为受限只读，禁止写文件与执行 Shell。
   - 底层内置路径沙箱防逃逸机制，物理拦截越过项目根目录的恶意路径穿越与敏感系统文件篡改。
 - **4 级安全防御模式 (Security Spectrum)**：
-
   - **`[interactive]`**：只读工具自动执行，写入文件及终端命令执行前强制进行人工确认。
   - **`[auto]`**：全自主放行执行，无需任何交互中断。
   - **`[readonly]`**：严格只读分析模式，物理拦截并拦截所有文件修改与 Shell 执行请求。
@@ -57,7 +52,7 @@ npx @qingmeixyz/cli
 
 #### 方式 B：全局安装
 ```bash
-# 全局安装青梅 CLI
+# 全局安装青袂 CLI
 npm install -g @qingmeixyz/cli
 
 # 直接启动
@@ -76,8 +71,7 @@ npm run build
 npm link
 ```
 
-
-> **首次启动引导**：若尚未配置 AI 厂商，青梅将自动启动交互式配置向导，引导您选择厂商（DeepSeek / Gemini 等）、输入 API Key、验证网络连通性，并自动完成预设模型选择。
+> **首次启动引导**：若尚未配置 AI 厂商，青袂将自动启动交互式配置向导，引导您选择厂商（DeepSeek / Gemini 等）、输入 API Key、验证网络连通性，并自动完成预设模型选择。
 
 ---
 
@@ -96,12 +90,11 @@ npm link
 | `/untrust [path]` | 撤销工作区信任，立即进入受限只读保护模式 |
 | `/compact` | 立即压缩与优化当前会话上下文（折叠长日志并提炼关键进展摘要） |
 | `/clear` | 清空终端屏幕并重置当前会话的上下文记忆 |
-
 | `/session [subcmd]` | 会话全生命周期管理：`-l` (列表), `-s` (保存), `-r` (恢复), `-d` (删除), `-e` (导出) |
 | `/config` | 查看当前生效的全局配置（支持 `/config edit` 一键唤起系统编辑器） |
-
 | `/help` | 显示完整的指令帮助清单 |
-| `/exit` 或 `/quit` | 退出青梅终端并断开所有后台 MCP 进程 |
+| `/exit` 或 `/quit` | 退出青袂终端并断开所有后台 MCP 进程 |
+
 
 
 
@@ -128,7 +121,8 @@ npm link
 
 ## 📜 提示词与指令约束体系
 
-青梅在每一次对话循环中，会按照严格的优先级自动合成 Agent 的 System Prompt：
+青袂在每一次对话循环中，会按照严格的优先级自动合成 Agent 的 System Prompt：
+
 
 ```text
 ┌──────────────────────────────────────────────────────────┐
@@ -253,7 +247,7 @@ qingmei mcp test filesystem
 qingmei mcp remove filesystem
 ```
 
-配置文件位于 `~/.qingmei/mcp.json`，青梅启动时会自动在后台完成所有服务的异步连接与工具隔离注册（命名格式形如 `mcp__<server>__<tool>`）。
+配置文件位于 `~/.qingmei/mcp.json`，青袂启动时会自动在后台完成所有服务的异步连接与工具隔离注册（命名格式形如 `mcp__<server>__<tool>`）。
 
 ---
 
@@ -283,7 +277,8 @@ required_tools: [read_file, run_command]
 3. 检查数据库查询语句是否均采用参数化绑定，防止 SQL 注入。
 ```
 
-在青梅终端中输入 `/skills` 即可一键激活或禁用该技能。
+在青袂终端中输入 `/skills` 即可一键激活或禁用该技能。
+
 
 ---
 
@@ -305,6 +300,15 @@ npm run dev
 
 ---
 
+## 🤝 贡献政策与反馈
+
+本项目目前由作者独立维护，暂不接收外部代码合并与 Pull Request (PR)。如果您遇到任何问题或有改进想法，非常欢迎在 [GitHub Issues](https://github.com/yangming2222/qingmei-cli/issues) 中交流反馈。
+
+详情请参阅 [贡献政策指南 (CONTRIBUTING.zh-CN.md)](CONTRIBUTING.zh-CN.md)。
+
+---
+
 ## 📄 开源许可证
 
 [MIT License](LICENSE) © Qingmei Team
+

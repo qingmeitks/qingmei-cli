@@ -1,4 +1,4 @@
-# Qingmei (青梅) - Minimalist Modern TypeScript Agent CLI
+# Qingmei (青袂) - Minimalist Modern TypeScript Agent CLI
 
 <p align="center">
   <b>English</b> | <a href="README.zh-CN.md">简体中文</a>
@@ -6,7 +6,8 @@
 
 ---
 
-**Qingmei (青梅)** is a modern, modular, high-density autonomous AI Agent Command Line Interface (CLI) built with TypeScript and Node.js. It features deep integration with the **Model Context Protocol (MCP)** specification, a comprehensive **Skill Extension Engine**, a **4-tier Security Spectrum**, and an icon-free, minimalist boxed terminal interface.
+**Qingmei (青袂)** is a modern, modular, high-density autonomous AI Agent Command Line Interface (CLI) built with TypeScript and Node.js. It features deep integration with the **Model Context Protocol (MCP)** specification, a comprehensive **Skill Extension Engine**, a **4-tier Security Spectrum**, and an icon-free, minimalist boxed terminal interface.
+
 
 ---
 
@@ -304,6 +305,15 @@ npm run dev
 
 ---
 
+## 🤝 Contributing Policy
+
+Qingmei is maintained as a personal open-source project. We do not accept external Pull Requests at this time. If you discover bugs or have suggestions, please open an issue in [GitHub Issues](https://github.com/yangming2222/qingmei-cli/issues).
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+---
+
 ## 📄 License
 
 [MIT License](LICENSE) © Qingmei Team
+

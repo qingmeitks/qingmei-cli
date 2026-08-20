@@ -159,7 +159,8 @@ export class ContextManager {
     const model = this.options.activeModel;
 
     const parts: string[] = [
-      `You are Qingmei (青梅), a powerful autonomous AI Agent CLI operating in the user's terminal environment.`,
+      `You are Qingmei (青袂), a powerful autonomous AI Agent CLI operating in the user's terminal environment.`,
+
       ``,
       `# Base Operational Directives:`,
       `1. Be precise, truthful, and helpful. Use clear, concise markdown formatting.`,

@@ -81,8 +81,9 @@ describe('TuiPrompt & Slash Command Suggestions', () => {
     expect(getStringWidth(truncated)).toBeLessThanOrEqual(6);
 
     // Wrap text CJK
-    const wrapped = wrapText('你好世界，欢迎使用青梅CLI助手', 10);
+    const wrapped = wrapText('你好世界，欢迎使用青袂CLI助手', 10);
     for (const w of wrapped) {
+
       expect(getStringWidth(w)).toBeLessThanOrEqual(10);
     }
   });

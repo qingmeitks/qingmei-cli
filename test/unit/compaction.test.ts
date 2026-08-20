@@ -86,8 +86,9 @@ describe('Context Caching & Auto-Compaction Engine', () => {
 
     // Invariant static prefix should be 100% identical across invocations to hit KV cache
     expect(prompt1).toBe(prompt2);
-    expect(prompt1.startsWith('You are Qingmei (青梅)')).toBe(true);
+    expect(prompt1.startsWith('You are Qingmei (青袂)')).toBe(true);
   });
+
 
   it('should allow manual compaction via agent.compactSession()', () => {
     const model = getModelMetadata('deepseek-chat', 'deepseek');

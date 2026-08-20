@@ -38,8 +38,9 @@ describe('ContextManager & Prompt Assembly (QINGMEI.md & AGENTS.md)', () => {
     expect(enTokens).toBeLessThan(15);
 
     // CJK text
-    const zhTokens = estimateTokenCount('青梅是一个自主终端智能助手');
+    const zhTokens = estimateTokenCount('青袂是一个自主终端智能助手');
     expect(zhTokens).toBeGreaterThan(10);
+
 
     // Format token numbers
     expect(formatTokenNumber(500)).toBe('500');
