@@ -1,7 +1,6 @@
 {
   "name": "@qingmeixyz/cli",
   "version": "0.0.1",
-
   "description": "Qingmei Agent CLI with MCP and Skill integration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,6 +16,14 @@
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yangming2222/qingmei-cli.git"
+  },
+  "homepage": "https://github.com/yangming2222/qingmei-cli#readme",
+  "bugs": {
+    "url": "https://github.com/yangming2222/qingmei-cli/issues"
   },
   "scripts": {
     "dev": "tsx bin/qingmei.ts",
