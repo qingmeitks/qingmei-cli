@@ -302,7 +302,8 @@ npm run dev
 
 ## 🤝 贡献政策与反馈
 
-本项目目前由作者独立维护，暂不接收外部代码合并与 Pull Request (PR)。如果您遇到任何问题或有改进想法，非常欢迎在 [GitHub Issues](https://github.com/yangming2222/qingmei-cli/issues) 中交流反馈。
+本项目目前由作者独立维护，暂不接收外部代码合并与 Pull Request (PR)。如果您遇到任何问题或有改进想法，非常欢迎在 [GitHub Issues](https://github.com/qingmeitks/qingmei-cli/issues) 中交流反馈。
+
 
 详情请参阅 [贡献政策指南 (CONTRIBUTING.zh-CN.md)](CONTRIBUTING.zh-CN.md)。
 

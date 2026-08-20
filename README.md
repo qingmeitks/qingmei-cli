@@ -307,7 +307,8 @@ npm run dev
 
 ## 🤝 Contributing Policy
 
-Qingmei is maintained as a personal open-source project. We do not accept external Pull Requests at this time. If you discover bugs or have suggestions, please open an issue in [GitHub Issues](https://github.com/yangming2222/qingmei-cli/issues).
+Qingmei is maintained as a personal open-source project. We do not accept external Pull Requests at this time. If you discover bugs or have suggestions, please open an issue in [GitHub Issues](https://github.com/qingmeitks/qingmei-cli/issues).
+
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 

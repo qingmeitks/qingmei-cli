@@ -17,7 +17,8 @@
 
 虽然我们暂不接受代码合并请求，但非常欢迎您通过其他方式参与：
 
-1. **提交 Bug 报告**：如果您在运行或使用中遇到任何异常，欢迎在 [GitHub Issues](https://github.com/yangming2222/qingmei-cli/issues) 中详细反馈复现步骤与日志。
+1. **提交 Bug 报告**：如果您在运行或使用中遇到任何异常，欢迎在 [GitHub Issues](https://github.com/qingmeitks/qingmei-cli/issues) 中详细反馈复现步骤与日志。
+
 2. **提出功能建议**：欢迎在 Issues 中交流使用场景与改进想法。
 3. **Fork 与二次开发**：根据 MIT 开源许可证，您可以自由 Fork 本仓库并在您自己的分支上做任何个性化定制或商业使用。
 

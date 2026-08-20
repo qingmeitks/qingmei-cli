@@ -17,7 +17,8 @@ Thank you for your interest in Qingmei (青袂)!
 
 Although we do not accept direct code pull requests, your feedback is still welcome:
 
-1. **Bug Reports**: If you discover a bug, please submit a detailed issue on [GitHub Issues](https://github.com/yangming2222/qingmei-cli/issues) with reproduction steps.
+1. **Bug Reports**: If you discover a bug, please submit a detailed issue on [GitHub Issues](https://github.com/qingmeitks/qingmei-cli/issues) with reproduction steps.
+
 2. **Feature Suggestions**: Feel free to share ideas and use cases in the Issues section.
 3. **Fork & Personal Customization**: Under the terms of the MIT License, you are free to fork this repository and modify it for your own personal or commercial use.
 

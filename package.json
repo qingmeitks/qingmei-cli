@@ -19,12 +19,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yangming2222/qingmei-cli.git"
+    "url": "git+https://github.com/qingmeitks/qingmei-cli.git"
   },
-  "homepage": "https://github.com/yangming2222/qingmei-cli#readme",
+  "homepage": "https://github.com/qingmeitks/qingmei-cli#readme",
   "bugs": {
-    "url": "https://github.com/yangming2222/qingmei-cli/issues"
+    "url": "https://github.com/qingmeitks/qingmei-cli/issues"
   },
+
   "scripts": {
     "dev": "tsx bin/qingmei.ts",
     "build": "tsup",
