@@ -47,17 +47,18 @@
 
 #### 方式 A：免安装即开即用（推荐）
 ```bash
-npx @qingmeixyz/cli
+npx @qingmeitks/cli
 ```
 
 #### 方式 B：全局安装
 ```bash
 # 全局安装青袂 CLI
-npm install -g @qingmeixyz/cli
+npm install -g @qingmeitks/cli
 
 # 直接启动
 qingmei
 ```
+
 
 #### 方式 C：从源码本地构建
 ```bash

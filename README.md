@@ -52,17 +52,18 @@
  
 #### Option A: Instant Run with npx (Recommended)
 ```bash
-npx @qingmeixyz/cli
+npx @qingmeitks/cli
 ```
 
 #### Option B: Global Install
 ```bash
 # Global install via npm
-npm install -g @qingmeixyz/cli
+npm install -g @qingmeitks/cli
 
 # Launch directly
 qingmei
 ```
+
 
 #### Option C: Build from Source
 ```bash

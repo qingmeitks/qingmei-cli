@@ -1,6 +1,7 @@
 {
-  "name": "@qingmeixyz/cli",
+  "name": "@qingmeitks/cli",
   "version": "0.0.1",
+
   "description": "Qingmei Agent CLI with MCP and Skill integration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
