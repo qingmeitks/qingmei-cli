@@ -12,7 +12,7 @@
 
 ---
 
-## [0.0.2] - 未发布 (Unreleased)
+## [0.1.0] - 未发布 (Unreleased)
 
 ### 新增特性 (Added)
 - **多会话并发执行与切换引擎 (`MultiSessionPool`)**：

@@ -635,7 +635,7 @@ export class TuiPrompt {
     const topLines: string[] = [
       topBorder,
       formatRow(chalk.bold.cyanBright('█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █')),
-      formatRow(chalk.bold.cyanBright('▀▀█ █ █ ▀█ █▄█ █ ▀ █ ██▄ █') + chalk.bold.whiteBright('   CLI v0.0.2')),
+      formatRow(chalk.bold.cyanBright('▀▀█ █ █ ▀█ █▄█ █ ▀ █ ██▄ █') + chalk.bold.whiteBright('   CLI v0.1.0')),
       formatRow(chalk.dim('Type your request, @file, !cmd, or slash commands (e.g. /help, /mode, /model, /exit)')),
       formatRow(''),
       formatRow(''),

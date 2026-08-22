@@ -12,7 +12,7 @@
 
 ## 🌟 Key Features
 
-- **Multi-Session Background Execution & Switching (v0.0.2)**:
+- **Multi-Session Background Execution & Switching (v0.1.0)**:
   - Multiple flat sessions under a single workspace, each maintaining independent context memory, status machines, and async execution loops.
   - Non-blocking background task execution: start a task in one session and seamlessly switch to another to work on something else.
   - Quick cycle between sessions with `Tab` when input is empty, or open the interactive picker with `/switch`.

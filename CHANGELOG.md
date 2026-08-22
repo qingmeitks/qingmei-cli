@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.0.2] - Unreleased
+## [0.1.0] - Unreleased
 
 ### Added
 - **Multi-Session Concurrency Engine (`MultiSessionPool`)**:
