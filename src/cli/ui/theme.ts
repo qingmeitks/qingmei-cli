@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { SecurityMode, ModelMetadata } from '../../config/types.js';
 import { getContextDisplayBadge } from '../../config/loader.js';
+import { SessionStatus } from '../../core/session/types.js';
 
 export const theme = {
   primary: chalk.cyan,
@@ -36,6 +37,22 @@ export const theme = {
     return meta.is1MContext ? chalk.yellowBright(`[${badge}]`) : chalk.dim(`[${badge}]`);
   },
 
+  badgeSessionStatus: (status: SessionStatus) => {
+    switch (status) {
+      case 'running':
+        return chalk.yellowBright('[running]');
+      case 'waiting_confirm':
+        return chalk.yellow('[waiting]');
+      case 'done':
+        return chalk.green('[done]');
+      case 'error':
+        return chalk.red('[error]');
+      case 'ready':
+      default:
+        return chalk.green('[ready]');
+    }
+  },
+
   formatPrompt: (mode: SecurityMode, model: ModelMetadata) => {
     const modeStr = theme.badgeMode(mode);
     const modelStr = theme.badgeModel(model.id);
@@ -45,4 +62,3 @@ export const theme = {
     return `${parts.join(' ')} > `;
   },
 };
-

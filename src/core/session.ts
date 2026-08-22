@@ -7,6 +7,11 @@ import {
   exportSessionToMarkdown,
 } from './session/storage.js';
 
+export * from './session/types.js';
+export * from './session/instance.js';
+export * from './session/pool.js';
+export * from './session/storage.js';
+
 export class SessionManager {
   public sessionId: string;
   public sessionName?: string;
@@ -86,4 +91,3 @@ export class SessionManager {
     return exportSessionToMarkdown(snapshot, targetPath);
   }
 }
-

@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import crypto from 'crypto';
 import { ChatMessage } from '../llm/types.js';
-import { SESSIONS_DIR, EXPORT_DIR } from '../../config/defaults.js';
 
 export interface SessionSnapshot {
   id: string;
@@ -17,13 +17,14 @@ export interface SessionSnapshot {
 }
 
 export function getWorkspaceHash(cwd: string): string {
-  const resolved = path.resolve(cwd);
-  return crypto.createHash('sha256').update(resolved).digest('hex').slice(0, 16);
+  const normalized = path.resolve(cwd);
+  return crypto.createHash('sha256').update(normalized).digest('hex').slice(0, 16);
 }
 
 export function getWorkspaceSessionDir(cwd: string): string {
   const hash = getWorkspaceHash(cwd);
-  return path.join(SESSIONS_DIR, hash);
+  const homeDir = os.homedir();
+  return path.join(homeDir, '.qingmei', 'sessions', hash);
 }
 
 export function ensureWorkspaceSessionDir(cwd: string): string {
@@ -34,16 +35,9 @@ export function ensureWorkspaceSessionDir(cwd: string): string {
   return dir;
 }
 
-export function ensureExportDir(): string {
-  if (!fs.existsSync(EXPORT_DIR)) {
-    fs.mkdirSync(EXPORT_DIR, { recursive: true });
-  }
-  return EXPORT_DIR;
-}
-
 export function generateSessionId(): string {
   const now = new Date();
-  const dateStr = now.toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+  const dateStr = now.toISOString().replace(/[-:T]/g, '').slice(0, 14);
   const rand = Math.random().toString(36).slice(2, 6);
   return `sess_${dateStr}_${rand}`;
 }
@@ -66,14 +60,40 @@ export function saveSessionSnapshot(snapshot: SessionSnapshot): void {
   fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2), 'utf-8');
 }
 
-export function loadSessionSnapshot(cwd: string, sessionId: string): SessionSnapshot | null {
+export function findMatchingSnapshot(snapshots: SessionSnapshot[], query: string): SessionSnapshot | undefined {
+  const q = query.trim().toLowerCase();
+  if (!q) return undefined;
+
+  // 1. Exact match on ID
+  const exactId = snapshots.find((s) => s.id.toLowerCase() === q);
+  if (exactId) return exactId;
+
+  // 2. Exact match on Name
+  const exactName = snapshots.find((s) => s.name && s.name.toLowerCase() === q);
+  if (exactName) return exactName;
+
+  // 3. StartsWith ID or Name
+  const startsWith = snapshots.find(
+    (s) => s.id.toLowerCase().startsWith(q) || (s.name && s.name.toLowerCase().startsWith(q))
+  );
+  if (startsWith) return startsWith;
+
+  // 4. Substring / Suffix match on ID or Name
+  const includes = snapshots.find(
+    (s) => s.id.toLowerCase().includes(q) || (s.name && s.name.toLowerCase().includes(q))
+  );
+  if (includes) return includes;
+
+  return undefined;
+}
+
+export function loadSessionSnapshot(cwd: string, sessionIdOrQuery: string): SessionSnapshot | null {
   const dir = getWorkspaceSessionDir(cwd);
-  let filePath = path.join(dir, `${sessionId}.json`);
+  let filePath = path.join(dir, `${sessionIdOrQuery}.json`);
 
   if (!fs.existsSync(filePath)) {
-    // Also try matching by name or partial ID
     const all = listSessionSnapshots(cwd);
-    const found = all.find((s) => s.id === sessionId || s.name === sessionId || s.id.startsWith(sessionId));
+    const found = findMatchingSnapshot(all, sessionIdOrQuery);
     if (found) {
       filePath = path.join(dir, `${found.id}.json`);
     } else {
@@ -118,13 +138,13 @@ export function listSessionSnapshots(cwd: string): SessionSnapshot[] {
   return results.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 
-export function deleteSessionSnapshot(cwd: string, sessionId: string): boolean {
+export function deleteSessionSnapshot(cwd: string, sessionIdOrQuery: string): boolean {
   const dir = getWorkspaceSessionDir(cwd);
-  let filePath = path.join(dir, `${sessionId}.json`);
+  let filePath = path.join(dir, `${sessionIdOrQuery}.json`);
 
   if (!fs.existsSync(filePath)) {
     const all = listSessionSnapshots(cwd);
-    const found = all.find((s) => s.id === sessionId || s.name === sessionId || s.id.startsWith(sessionId));
+    const found = findMatchingSnapshot(all, sessionIdOrQuery);
     if (found) {
       filePath = path.join(dir, `${found.id}.json`);
     } else {
@@ -142,14 +162,17 @@ export function deleteSessionSnapshot(cwd: string, sessionId: string): boolean {
 
 export function deleteAllSessionSnapshots(cwd: string): number {
   const dir = getWorkspaceSessionDir(cwd);
-  if (!fs.existsSync(dir)) return 0;
+  if (!fs.existsSync(dir)) {
+    return 0;
+  }
+
   let count = 0;
   try {
     const files = fs.readdirSync(dir);
-    for (const f of files) {
-      if (f.endsWith('.json')) {
+    for (const file of files) {
+      if (file.endsWith('.json')) {
         try {
-          fs.unlinkSync(path.join(dir, f));
+          fs.unlinkSync(path.join(dir, file));
           count++;
         } catch {
           // ignore
@@ -157,72 +180,77 @@ export function deleteAllSessionSnapshots(cwd: string): number {
       }
     }
   } catch {
-    // ignore
+    return count;
   }
   return count;
 }
 
-
-export function exportSessionToMarkdown(snapshot: SessionSnapshot, targetPath?: string): string {
-  let outPath: string;
-
-  if (targetPath) {
-    if (targetPath.endsWith('/') || (fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory())) {
-      const fname = `qingmei-session-${snapshot.name || snapshot.id}.md`;
-      outPath = path.resolve(targetPath, fname);
-    } else {
-      outPath = path.resolve(targetPath);
+export function exportSessionToMarkdown(snapshot: SessionSnapshot, customTargetPath?: string): string {
+  let targetPath = customTargetPath;
+  if (!targetPath) {
+    const homeDir = os.homedir();
+    const exportDir = path.join(homeDir, '.qingmei', 'exports');
+    if (!fs.existsSync(exportDir)) {
+      fs.mkdirSync(exportDir, { recursive: true });
     }
+    targetPath = path.join(exportDir, `${snapshot.id}.md`);
   } else {
-    ensureExportDir();
-    const fname = `qingmei-session-${snapshot.name || snapshot.id}.md`;
-    outPath = path.join(EXPORT_DIR, fname);
+    targetPath = path.resolve(targetPath);
+    const parent = path.dirname(targetPath);
+    if (!fs.existsSync(parent)) {
+      fs.mkdirSync(parent, { recursive: true });
+    }
   }
 
-  const lines: string[] = [
-    `# Qingmei AI Session Export`,
-    ``,
-    `- **Session ID**: \`${snapshot.id}\``,
-    snapshot.name ? `- **Session Name**: \`${snapshot.name}\`` : null,
-    `- **Working Directory**: \`${snapshot.cwd}\``,
-    `- **Created At**: ${new Date(snapshot.createdAt).toLocaleString()}`,
-    `- **Last Updated**: ${new Date(snapshot.updatedAt).toLocaleString()}`,
-    `- **Total Messages**: ${snapshot.messageCount}`,
-    `- **Estimated Tokens**: ${snapshot.usedTokens}`,
-    ``,
-    `---`,
-    ``,
-  ].filter(Boolean) as string[];
+  const lines: string[] = [];
+  const sessionName = snapshot.name ? ` - ${snapshot.name}` : '';
+  lines.push(`# Qingmei AI Session Export${sessionName}`);
+  lines.push('');
+  lines.push(`- **Session ID**: \`${snapshot.id}\``);
+  lines.push(`- **Workspace**: \`${snapshot.cwd}\``);
+  lines.push(`- **Created At**: ${new Date(snapshot.createdAt).toLocaleString()}`);
+  lines.push(`- **Updated At**: ${new Date(snapshot.updatedAt).toLocaleString()}`);
+  lines.push(`- **Message Count**: ${snapshot.messageCount}`);
+  lines.push(`- **Estimated Tokens**: ~${snapshot.usedTokens}`);
+  lines.push('');
+  lines.push('---');
+  lines.push('');
 
-  for (const m of snapshot.messages) {
-    const roleTitle = m.role.toUpperCase();
-    lines.push(`### [${roleTitle}]`);
-    if (m.reasoning_content) {
-      lines.push(`> **Thinking**:`);
-      lines.push(`> ${m.reasoning_content.replace(/\n/g, '\n> ')}`);
-      lines.push(``);
-    }
-    if (m.content) {
-      lines.push(m.content);
-      lines.push(``);
-    }
-    if (m.tool_calls && m.tool_calls.length > 0) {
-      lines.push(`*Tool Calls:*`);
-      for (const tc of m.tool_calls) {
-        lines.push(`- \`${tc.function.name}\` (id: \`${tc.id}\`)`);
-        lines.push('```json');
-        lines.push(tc.function.arguments);
-        lines.push('```');
+  for (const msg of snapshot.messages) {
+    if (msg.role === 'user') {
+      lines.push(`### 👤 User`);
+      lines.push('');
+      lines.push(msg.content || '');
+      lines.push('');
+    } else if (msg.role === 'assistant') {
+      lines.push(`### 🤖 Qingmei Agent`);
+      lines.push('');
+      if (msg.reasoning_content) {
+        lines.push('> **Thinking / Reasoning**:');
+        lines.push('>');
+        lines.push(`> ${msg.reasoning_content.replace(/\n/g, '\n> ')}`);
+        lines.push('');
       }
-      lines.push(``);
+      if (msg.content) {
+        lines.push(msg.content);
+        lines.push('');
+      }
+      if (msg.tool_calls && msg.tool_calls.length > 0) {
+        lines.push('**Tool Calls**:');
+        for (const tc of msg.tool_calls) {
+          lines.push(`- \`${tc.function.name}\` with arguments: \`${tc.function.arguments}\``);
+        }
+        lines.push('');
+      }
+    } else if (msg.role === 'tool') {
+      lines.push(`#### 🔧 Tool Output (${msg.name || 'tool'})`);
+      lines.push('```');
+      lines.push(msg.content || '');
+      lines.push('```');
+      lines.push('');
     }
   }
 
-  const parentDir = path.dirname(outPath);
-  if (!fs.existsSync(parentDir)) {
-    fs.mkdirSync(parentDir, { recursive: true });
-  }
-
-  fs.writeFileSync(outPath, lines.join('\n'), 'utf-8');
-  return outPath;
+  fs.writeFileSync(targetPath, lines.join('\n'), 'utf-8');
+  return targetPath;
 }

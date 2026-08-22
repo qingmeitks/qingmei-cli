@@ -25,7 +25,10 @@ describe('TuiPrompt & Slash Command Suggestions', () => {
     const matchesSk = tuiPrompt.getMatchingCommands('/sk');
     expect(matchesSk.map((m) => m.command)).toEqual(['/skills']);
 
-    const matchesExit = tuiPrompt.getMatchingCommands('/ex');
+    const matchesEx = tuiPrompt.getMatchingCommands('/ex');
+    expect(matchesEx.map((m) => m.command)).toEqual(['/export', '/exit']);
+
+    const matchesExit = tuiPrompt.getMatchingCommands('/exi');
     expect(matchesExit.map((m) => m.command)).toEqual(['/exit']);
   });
 

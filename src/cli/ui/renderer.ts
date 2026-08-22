@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+// @ts-ignore
 import { markedTerminal } from 'marked-terminal';
 import chalk from 'chalk';
 

@@ -20,19 +20,28 @@ import path from 'path';
 import { ToolRegistry } from '../tools/registry.js';
 import { MCPManager } from '../mcp/manager.js';
 import { SkillManager } from '../skills/manager.js';
-import { SessionManager } from '../core/session.js';
 import { TuiPrompt } from './ui/prompt.js';
-import { TerminalRenderer } from './ui/renderer.js';
 import { SecurityMode, ModelMetadata, QingmeiConfig, ProviderConfig, ModelConfig, ThinkingEffort } from '../config/types.js';
 import { SUPPORTED_PROVIDERS, CONFIG_PATH } from '../config/defaults.js';
 import { isWorkspaceTrusted, addTrustedWorkspace, removeTrustedWorkspace } from '../core/security/trust.js';
 import { expandMentions } from '../core/context/mention.js';
-
+import {
+  handleNewSession,
+  handleSwitchSession,
+  handleListSessions,
+  handleRenameSession,
+  handleCloseSession,
+  handleSaveSession,
+  handleResumeSession,
+  handleDeleteSession,
+  handleExportSession,
+  handleQuitWithRunningGuard,
+  applySwitchedSessionToTui,
+} from './commands/session.js';
 
 export function clearTerminal(): void {
   process.stdout.write('\x1b[0 q\x1b[2J\x1b[3J\x1b[H\x1b[?25h');
 }
-
 
 export async function startRepl(): Promise<void> {
   // 1. Check if configured, otherwise auto-trigger setup wizard
@@ -50,7 +59,7 @@ export async function startRepl(): Promise<void> {
   let isTrusted = isWorkspaceTrusted(currentCwd, config.trustedWorkspaces);
 
   if (!isTrusted) {
-    p.intro(chalk.bold.yellow('🛡️ Workspace Trust Required'));
+    p.intro(chalk.bold.yellow('Workspace Trust Required'));
     p.note(
       `You are opening Qingmei in an untrusted directory:\n${chalk.cyan(currentCwd)}\n\nUntrusted workspaces disable mutating actions and custom local scripts to protect against prompt injection and malicious code.`,
       'Security Protection'
@@ -103,7 +112,6 @@ export async function startRepl(): Promise<void> {
   const toolRegistry = new ToolRegistry(true);
   const mcpManager = new MCPManager();
   const skillManager = new SkillManager();
-  const sessionManager = new SessionManager();
 
   // Connect to background MCP servers
   await mcpManager.connectAll(toolRegistry);
@@ -118,12 +126,11 @@ export async function startRepl(): Promise<void> {
     activeModel: activeModelMeta,
     skillManager,
     mcpManager,
-    sessionManager,
   });
   agent.dispatcher.registry = toolRegistry;
 
-
   const initialUsage = agent.getContextUsage();
+  const initialBar = agent.pool.getStatusBarSecondLine(process.stdout.columns || 80);
   const tuiPrompt = new TuiPrompt({
     mode: agent.securityMode,
     model: agent.activeModel,
@@ -131,23 +138,39 @@ export async function startRepl(): Promise<void> {
     isWorkspaceTrusted: agent.isWorkspaceTrusted,
     thinkingEffort: agent.thinkingEffort,
     contextUsage: initialUsage.display,
+    sessionBarText: initialBar,
   });
 
-  // 4. Main REPL loop (Clear terminal before rendering the pristine boxed TUI)
+  // 4. Main REPL loop
   clearTerminal();
   while (true) {
     const currentUsage = agent.getContextUsage();
+    const sessionBarText = agent.pool.getStatusBarSecondLine(process.stdout.columns || 80);
     tuiPrompt.updateState(
       agent.securityMode,
       agent.activeModel,
       agent.isWorkspaceTrusted,
       agent.thinkingEffort,
-      currentUsage.display
+      currentUsage.display,
+      sessionBarText
     );
 
-    const input = await tuiPrompt.readLine();
-
-
+    const input = await tuiPrompt.readLine({
+      onEmptyTab: () => {
+        const next = agent.pool.nextSession();
+        applySwitchedSessionToTui(next, agent, tuiPrompt);
+        const usage = agent.getContextUsage();
+        const bar = agent.pool.getStatusBarSecondLine(process.stdout.columns || 80);
+        tuiPrompt.updateState(
+          agent.securityMode,
+          agent.activeModel,
+          agent.isWorkspaceTrusted,
+          agent.thinkingEffort,
+          usage.display,
+          bar
+        );
+      },
+    });
 
     if (!input) continue;
 
@@ -238,7 +261,6 @@ export async function startRepl(): Promise<void> {
       tuiPrompt.startSpinner('Thinking...');
 
       await agent.run(finalPrompt, {
-
         onReasoningChunk: (delta) => {
           currentReasoning += delta;
           tuiPrompt.updateSpinner('Thinking (reasoning)...');
@@ -260,7 +282,6 @@ export async function startRepl(): Promise<void> {
           tuiPrompt.updateSpinner('Thinking...');
         },
         onConfirm: async (description) => {
-
           tuiPrompt.stopSpinner();
           tuiPrompt.clearLiveLines();
           const confirmed = await tuiPrompt.confirmModal({
@@ -284,12 +305,14 @@ export async function startRepl(): Promise<void> {
       }
 
       const updatedUsage = agent.getContextUsage();
+      const updatedBar = agent.pool.getStatusBarSecondLine(process.stdout.columns || 80);
       tuiPrompt.updateState(
         agent.securityMode,
         agent.activeModel,
         agent.isWorkspaceTrusted,
         agent.thinkingEffort,
-        updatedUsage.display
+        updatedUsage.display,
+        updatedBar
       );
       tuiPrompt.renderBox('', 0, 0);
     } catch (err: any) {
@@ -302,8 +325,6 @@ export async function startRepl(): Promise<void> {
   }
 }
 
-
-
 async function handleSlashCommand(
   cmd: string,
   arg: string,
@@ -314,21 +335,104 @@ async function handleSlashCommand(
     case 'help': {
       tuiPrompt.addHistory([
         chalk.bold('Available Slash Commands:'),
-        `  ${chalk.cyan('/mode [mode]')}    - Switch mode: interactive, auto, readonly, chat`,
-        `  ${chalk.cyan('/model [name]')}   - Switch AI model & provider`,
-        `  ${chalk.cyan('/effort [level]')} - Set reasoning effort: off, low, medium, high`,
-        `  ${chalk.cyan('/skills')}         - View and toggle active skills`,
-        `  ${chalk.cyan('/mcp')}            - Check MCP server connections and tools`,
-        `  ${chalk.cyan('/trust [path]')}   - Trust current or specified workspace (enable mutating tools)`,
-        `  ${chalk.cyan('/untrust [path]')} - Untrust current or specified workspace (switch to restricted mode)`,
-        `  ${chalk.cyan('/compact')}        - Compact and optimize context memory (fold tool logs & summarize)`,
-        `  ${chalk.cyan('/session')}        - Session management: -l (list), -s (save), -r (resume), -d (delete), -e (export)`,
-        `  ${chalk.cyan('/clear')}          - Clear screen and reset conversation memory`,
-        `  ${chalk.cyan('/config')}         - Show current configuration`,
-        `  ${chalk.cyan('/help')}           - Show this help message`,
-        `  ${chalk.cyan('/exit')} / ${chalk.cyan('/quit')}   - Exit REPL`,
+        `  ${chalk.cyan('/new [name]')}       - Create and switch to a new session`,
+        `  ${chalk.cyan('/switch [id]')}     - Switch active session (or press Tab on empty input)`,
+        `  ${chalk.cyan('/sessions')}        - List all open sessions and saved snapshots`,
+        `  ${chalk.cyan('/rename [name]')}   - Rename current active session`,
+        `  ${chalk.cyan('/close [id]')}      - Close current or specified session`,
+        `  ${chalk.cyan('/save [name]')}     - Save session snapshot to disk`,
+        `  ${chalk.cyan('/resume [id]')}     - Resume a saved snapshot from disk`,
+        `  ${chalk.cyan('/delete [id]')}     - Delete a saved snapshot from disk`,
+        `  ${chalk.cyan('/export [id]')}     - Export session to Markdown report`,
+        `  ${chalk.cyan('/mode [mode]')}      - Switch mode: interactive, auto, readonly, chat`,
+        `  ${chalk.cyan('/model [name]')}     - Switch AI model & provider`,
+        `  ${chalk.cyan('/effort [level]')}   - Set reasoning effort: off, low, medium, high`,
+        `  ${chalk.cyan('/skills')}           - View and toggle active skills`,
+        `  ${chalk.cyan('/mcp')}              - Check MCP server connections and tools`,
+        `  ${chalk.cyan('/trust [path]')}     - Trust current workspace (enable full tools)`,
+        `  ${chalk.cyan('/untrust [path]')}   - Untrust workspace (switch to restricted mode)`,
+        `  ${chalk.cyan('/compact')}          - Compact and optimize context memory`,
+        `  ${chalk.cyan('/clear')}            - Clear screen viewport (retains session memory)`,
+        `  ${chalk.cyan('/config')}           - Show current configuration`,
+        `  ${chalk.cyan('/help')}             - Show this help message`,
+        `  ${chalk.cyan('/exit')} / ${chalk.cyan('/quit')}     - Exit REPL (warns if tasks running)`,
         '',
       ]);
+      break;
+    }
+
+    case 'new': {
+      await handleNewSession(arg, agent, tuiPrompt);
+      break;
+    }
+
+    case 'switch': {
+      await handleSwitchSession(arg, agent, tuiPrompt);
+      break;
+    }
+
+    case 'sessions': {
+      await handleListSessions(agent, tuiPrompt);
+      break;
+    }
+
+    case 'rename': {
+      await handleRenameSession(arg, agent, tuiPrompt);
+      break;
+    }
+
+    case 'close': {
+      await handleCloseSession(arg, agent, tuiPrompt);
+      break;
+    }
+
+    case 'save': {
+      await handleSaveSession(arg, agent, tuiPrompt);
+      break;
+    }
+
+    case 'resume': {
+      await handleResumeSession(arg, agent, tuiPrompt);
+      break;
+    }
+
+    case 'delete': {
+      await handleDeleteSession(arg, agent, tuiPrompt);
+      break;
+    }
+
+    case 'export': {
+      await handleExportSession(arg, agent, tuiPrompt);
+      break;
+    }
+
+    case 'session': {
+      const parts = arg.trim().split(/\s+/).filter(Boolean);
+      const sub = parts[0]?.toLowerCase();
+      const subArg = parts.slice(1).join(' ');
+
+      if (!sub || sub === 'list') {
+        await handleListSessions(agent, tuiPrompt);
+      } else if (sub === 'new') {
+        await handleNewSession(subArg, agent, tuiPrompt);
+      } else if (sub === 'switch') {
+        await handleSwitchSession(subArg, agent, tuiPrompt);
+      } else if (sub === 'rename') {
+        await handleRenameSession(subArg, agent, tuiPrompt);
+      } else if (sub === 'close') {
+        await handleCloseSession(subArg, agent, tuiPrompt);
+      } else if (sub === 'save') {
+        await handleSaveSession(subArg, agent, tuiPrompt);
+      } else if (sub === 'resume') {
+        await handleResumeSession(subArg, agent, tuiPrompt);
+      } else if (sub === 'delete') {
+        await handleDeleteSession(subArg, agent, tuiPrompt);
+      } else if (sub === 'export') {
+        await handleExportSession(subArg, agent, tuiPrompt);
+      } else {
+        tuiPrompt.addHistory(chalk.yellow(`Unknown /session subcommand: "${sub}". Available: new, switch, list, rename, close, save, resume, delete, export`));
+        tuiPrompt.addHistory('');
+      }
       break;
     }
 
@@ -444,7 +548,7 @@ async function handleSlashCommand(
         const providerOptions = SUPPORTED_PROVIDERS.map((pDef) => {
           const isCurrent = pDef.id === currentProvider;
           const isConfigured = Boolean(config.providers[pDef.id]?.apiKey || !pDef.requiresApiKey);
-          const status = isConfigured ? chalk.green('✓ configured') : chalk.gray('unconfigured');
+          const status = isConfigured ? chalk.green('configured') : chalk.gray('unconfigured');
           const currentBadge = isCurrent ? chalk.cyanBright(' (current)') : '';
           const tag1M = pDef.is1MSupported ? chalk.yellowBright(' [1M]') : '';
           return {
@@ -468,7 +572,6 @@ async function handleSlashCommand(
         let provConf = config.providers[selectedProvider] || {};
         let apiKey = provConf.apiKey;
 
-        // Prompt for API key if required and not configured
         if (pDef?.requiresApiKey && !apiKey) {
           const keyInput = await tuiPrompt.textModal({
             title: `Enter API Key for ${pDef.name}`,
@@ -490,7 +593,7 @@ async function handleSlashCommand(
           });
         }
 
-        // Step 2: Select Model from config (Preset models or manual input)
+        // Step 2: Select Model
         const providerModels = getProviderModels(selectedProvider, config);
 
         const modelChoices: Array<{ value: string; label: string; hint?: string }> = providerModels.map((m) => {
@@ -571,8 +674,6 @@ async function handleSlashCommand(
           },
         });
 
-
-
         agent.setModel(selectedModel, selectedProvider);
         const updatedConf = loadConfig();
         const updatedPConf = updatedConf.providers[selectedProvider] || {};
@@ -591,7 +692,6 @@ async function handleSlashCommand(
       }
       break;
     }
-
 
     case 'skills': {
       const allSkills = agent.skillManager.getAllSkills();
@@ -675,7 +775,6 @@ async function handleSlashCommand(
         agent.getContextUsage().display
       );
       tuiPrompt.addHistory(chalk.yellow(`! Untrusted workspace: ${targetDir} (switched to restricted [readonly] mode)`));
-
       tuiPrompt.addHistory('');
       clearTerminal();
       break;
@@ -706,243 +805,9 @@ async function handleSlashCommand(
 
     case 'clear': {
       clearTerminal();
-      agent.session.clear();
       tuiPrompt.clearHistory();
-      tuiPrompt.addHistory(chalk.green('✓ Session reset. Starting fresh conversation.'));
-      tuiPrompt.addHistory('');
       break;
     }
-
-
-    case 'session': {
-      const parts = arg.trim().split(/\s+/).filter(Boolean);
-      const sub = parts[0]?.toLowerCase();
-      const subArg = parts.slice(1).join(' ');
-
-      // 1. /session list / -l
-      if (!sub || sub === 'list' || sub === '-l') {
-        const sessions = agent.listSessions();
-        if (sessions.length === 0) {
-          tuiPrompt.addHistory(chalk.dim('  No saved sessions found in this workspace.'));
-          tuiPrompt.addHistory('');
-          break;
-        }
-
-        const lines: string[] = [chalk.bold('Workspace Session History:')];
-        for (const s of sessions) {
-          const isActive = s.id === agent.session.sessionId ? chalk.green(' [ACTIVE]') : '';
-          const nameTag = s.name ? chalk.cyan(`[${s.name}] `) : '';
-          const dateStr = new Date(s.updatedAt || s.createdAt).toLocaleString();
-          const stats = chalk.dim(`(${s.messageCount} msgs, ~${s.usedTokens} tokens, ${dateStr})`);
-          lines.push(`  * ${chalk.yellow(s.id)} ${nameTag}${isActive} ${stats}`);
-          if (s.preview) {
-            lines.push(chalk.dim(`    "${s.preview}"`));
-          }
-        }
-        lines.push('');
-        lines.push(chalk.dim('  Tip: Use "/session -r <id>" to resume, "/session -s <name>" to save, or "/session -d <id>" to delete.'));
-        lines.push('');
-        tuiPrompt.addHistory(lines);
-        break;
-      }
-
-      // 2. /session save / -s [name]
-      if (sub === 'save' || sub === '-s') {
-        let saveName = subArg;
-        if (!saveName) {
-          const nameInput = await tuiPrompt.textModal({
-            title: 'Save Session Snapshot',
-            placeholder: 'Enter snapshot name (optional)',
-          });
-          if (nameInput?.trim()) {
-            saveName = nameInput.trim();
-          }
-        }
-        const snapshot = agent.saveActiveSession(saveName || undefined);
-        const nameLabel = snapshot.name ? ` [${snapshot.name}]` : '';
-        tuiPrompt.addHistory(chalk.green(`✓ Session saved successfully:${nameLabel} (ID: ${snapshot.id})`));
-        tuiPrompt.addHistory('');
-        break;
-      }
-
-      // 3. /session resume / -r [session-id]
-      if (sub === 'resume' || sub === '-r') {
-        let targetId = subArg;
-        const allSessions = agent.listSessions();
-
-        if (!targetId) {
-          if (allSessions.length === 0) {
-            tuiPrompt.addHistory(chalk.yellow('! No previous sessions found to resume.'));
-            tuiPrompt.addHistory('');
-            break;
-          }
-
-          const options = allSessions.map((s) => {
-            const dateStr = new Date(s.updatedAt || s.createdAt).toLocaleString();
-            const tag = s.name ? `[${s.name}] ` : '';
-            return {
-              value: s.id,
-              label: `${tag}${s.id} (${dateStr})`,
-              hint: s.preview ? `"${s.preview.slice(0, 40)}"` : `${s.messageCount} msgs`,
-            };
-          });
-
-          const choice = await tuiPrompt.selectModal({
-            title: 'Select Session to Resume',
-            options,
-          });
-
-          if (!choice) {
-            break;
-          }
-          targetId = choice;
-        }
-
-        const success = agent.resumeSession(targetId);
-        if (success) {
-          const currentUsage = agent.getContextUsage();
-          tuiPrompt.updateState(
-            agent.securityMode,
-            agent.activeModel,
-            agent.isWorkspaceTrusted,
-            agent.thinkingEffort,
-            currentUsage.display
-          );
-
-          tuiPrompt.clearHistory();
-          const nameLabel = agent.session.sessionName ? ` [${agent.session.sessionName}]` : '';
-          tuiPrompt.addHistory(chalk.green(`✓ Resumed session:${nameLabel} (ID: ${agent.session.sessionId}, ${agent.session.messages.length} messages)`));
-          tuiPrompt.addHistory('');
-
-          // Re-populate visible history with past dialogue
-          for (const m of agent.session.messages) {
-            if (m.role === 'user' && m.content) {
-              tuiPrompt.addHistory(`${chalk.cyan('> ')}${chalk.bold(m.content)}`);
-            } else if (m.role === 'assistant' && m.content) {
-              tuiPrompt.addHistory(m.content);
-              tuiPrompt.addHistory('');
-            }
-          }
-        } else {
-          tuiPrompt.addHistory(chalk.red(`✗ Could not find session "${targetId}". Use "/session -l" to list available sessions.`));
-          tuiPrompt.addHistory('');
-        }
-        break;
-      }
-
-      // 4. /session delete / -d [session-id | all]
-      if (sub === 'delete' || sub === '-d') {
-        let targetId = subArg;
-        const allSessions = agent.listSessions();
-
-        if (allSessions.length === 0) {
-          tuiPrompt.addHistory(chalk.dim('  No sessions found to delete.'));
-          tuiPrompt.addHistory('');
-          break;
-        }
-
-        if (targetId === 'all' || targetId === '--all') {
-          const confirmed = await tuiPrompt.confirmModal({
-            title: 'Clear All Workspace Sessions',
-            message: `Are you sure you want to delete all ${allSessions.length} session snapshots?`,
-            initialValue: false,
-          });
-          if (confirmed) {
-            const count = agent.deleteAllSessions();
-            tuiPrompt.addHistory(chalk.green(`✓ Successfully deleted all ${count} sessions for this workspace.`));
-            tuiPrompt.addHistory('');
-          }
-          break;
-        }
-
-        if (!targetId) {
-          const options = allSessions.map((s) => {
-            const dateStr = new Date(s.updatedAt || s.createdAt).toLocaleString();
-            const tag = s.name ? `[${s.name}] ` : '';
-            return {
-              value: s.id,
-              label: `${tag}${s.id} (${dateStr})`,
-              hint: s.preview ? `"${s.preview.slice(0, 36)}"` : `${s.messageCount} msgs`,
-            };
-          });
-
-          // Add Delete All option
-          options.unshift({
-            value: '__ALL__',
-            label: chalk.redBright('🗑️  [Clear All Sessions]'),
-            hint: `Permanently delete all ${allSessions.length} files`,
-          });
-
-          const choice = await tuiPrompt.selectModal({
-            title: 'Select Session to Delete',
-            options,
-          });
-
-          if (!choice) {
-            break;
-          }
-          targetId = choice;
-        }
-
-        if (targetId === '__ALL__') {
-          const confirmed = await tuiPrompt.confirmModal({
-            title: 'Clear All Workspace Sessions',
-            message: `Are you sure you want to delete all ${allSessions.length} session snapshots?`,
-            initialValue: false,
-          });
-          if (confirmed) {
-            const count = agent.deleteAllSessions();
-            tuiPrompt.addHistory(chalk.green(`✓ Successfully deleted all ${count} sessions for this workspace.`));
-            tuiPrompt.addHistory('');
-          }
-          break;
-        }
-
-        const success = agent.deleteSession(targetId);
-        if (success) {
-          tuiPrompt.addHistory(chalk.green(`✓ Deleted session: ${targetId}`));
-        } else {
-          tuiPrompt.addHistory(chalk.red(`✗ Could not delete session "${targetId}".`));
-        }
-        tuiPrompt.addHistory('');
-        break;
-      }
-
-
-
-      // 5. /session export / -e [session-id] [path]
-      if (sub === 'export' || sub === '-e') {
-        const exportArgs = parts.slice(1);
-        let targetSessionId: string | undefined;
-        let targetPath: string | undefined;
-
-        if (exportArgs.length === 1) {
-          const single = exportArgs[0];
-          if (single.includes('/') || single.includes('\\') || single.endsWith('.md') || single.startsWith('.')) {
-            targetPath = single;
-          } else {
-            targetSessionId = single;
-          }
-        } else if (exportArgs.length >= 2) {
-          targetSessionId = exportArgs[0];
-          targetPath = exportArgs[1];
-        }
-
-        try {
-          const outPath = agent.exportSession(targetSessionId, targetPath);
-          tuiPrompt.addHistory(chalk.green(`✓ Session exported to: ${outPath}`));
-        } catch (err: any) {
-          tuiPrompt.addHistory(chalk.red(`✗ Export failed: ${err.message || String(err)}`));
-        }
-        tuiPrompt.addHistory('');
-        break;
-      }
-
-      tuiPrompt.addHistory(chalk.yellow(`Unknown /session subcommand: "${sub}". Available: -l (list), -s (save), -r (resume), -d (delete), -e (export)`));
-      tuiPrompt.addHistory('');
-      break;
-    }
-
 
     case 'config': {
       if (arg === 'edit') {
@@ -975,12 +840,16 @@ async function handleSlashCommand(
         '',
       ]);
       break;
-
     }
 
     case 'exit':
-    case 'quit':
-      return 'exit';
+    case 'quit': {
+      const canExit = await handleQuitWithRunningGuard(agent, tuiPrompt);
+      if (canExit) {
+        return 'exit';
+      }
+      break;
+    }
 
     default:
       tuiPrompt.addHistory(chalk.yellow(`Unknown command: /${cmd}. Type /help for available commands.`));

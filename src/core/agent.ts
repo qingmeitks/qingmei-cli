@@ -4,6 +4,8 @@ import { ToolDispatcher } from './dispatcher.js';
 import { ContextManager, ContextUsage } from './context.js';
 import { CompactionResult } from './context/compressor.js';
 import { SessionManager } from './session.js';
+import { MultiSessionPool } from './session/pool.js';
+import { SessionInstance } from './session/instance.js';
 import {
   SessionSnapshot,
   loadSessionSnapshot,
@@ -18,7 +20,6 @@ import { MCPManager } from '../mcp/manager.js';
 import { SecurityMode, ModelMetadata, ThinkingEffort, CompactionConfig } from '../config/types.js';
 import { ToolExecutionContext } from '../tools/types.js';
 import { getModelMetadata } from '../config/loader.js';
-
 
 export interface AgentCallbacks {
   onReasoningChunk?: (delta: string) => void;
@@ -40,6 +41,7 @@ export interface AgentConfig {
   skillManager?: SkillManager;
   mcpManager?: MCPManager;
   sessionManager?: SessionManager;
+  pool?: MultiSessionPool;
 }
 
 export class QingmeiAgent {
@@ -52,8 +54,7 @@ export class QingmeiAgent {
   public dispatcher: ToolDispatcher;
   public skillManager: SkillManager;
   public mcpManager: MCPManager;
-  public session: SessionManager;
-  public contextManager: ContextManager;
+  public pool: MultiSessionPool;
   public maxSteps = 25;
 
   constructor(config: AgentConfig) {
@@ -66,36 +67,60 @@ export class QingmeiAgent {
     this.dispatcher = config.toolDispatcher || new ToolDispatcher();
     this.skillManager = config.skillManager || new SkillManager();
     this.mcpManager = config.mcpManager || new MCPManager();
-    this.session = config.sessionManager || new SessionManager();
 
-    this.contextManager = new ContextManager({
-      workingDirectory: this.workingDirectory,
-      activeModel: this.activeModel,
-      skillManager: this.skillManager,
-      compactionConfig: config.compactionConfig,
-    });
+    if (config.pool) {
+      this.pool = config.pool;
+    } else {
+      this.pool = new MultiSessionPool({
+        workingDirectory: this.workingDirectory,
+        securityMode: this.securityMode,
+        isWorkspaceTrusted: this.isWorkspaceTrusted,
+        thinkingEffort: this.thinkingEffort,
+        compactionConfig: config.compactionConfig,
+        llmClient: this.llmClient,
+        activeModel: this.activeModel,
+        toolDispatcher: this.dispatcher,
+        skillManager: this.skillManager,
+      });
+
+      if (config.sessionManager) {
+        this.pool.activeSession.sessionManager = config.sessionManager;
+      }
+    }
+  }
+
+  get session(): SessionManager {
+    return this.pool.activeSession.sessionManager;
+  }
+
+  get contextManager(): ContextManager {
+    return this.pool.activeSession.contextManager;
   }
 
   setWorkspaceTrusted(trusted: boolean): void {
     this.isWorkspaceTrusted = trusted;
+    this.pool.updateConfig({ isWorkspaceTrusted: trusted });
   }
 
   setThinkingEffort(effort: ThinkingEffort): void {
     this.thinkingEffort = effort;
+    this.pool.updateConfig({ thinkingEffort: effort });
   }
 
   setSecurityMode(mode: SecurityMode): void {
     this.securityMode = mode;
+    this.pool.updateConfig({ securityMode: mode });
   }
 
   setModel(modelId: string, provider?: string): void {
     const meta = getModelMetadata(modelId, provider || this.llmClient.config.provider);
     this.activeModel = meta;
-    this.contextManager.updateModel(meta);
+    this.pool.updateConfig({ activeModel: meta });
   }
 
   setLLMClient(client: LLMClient): void {
     this.llmClient = client;
+    this.pool.updateConfig({ llmClient: client });
   }
 
   getContextUsage(): ContextUsage {
@@ -110,149 +135,38 @@ export class QingmeiAgent {
   }
 
   saveActiveSession(name?: string): SessionSnapshot {
-    const usage = this.getContextUsage();
-    return this.session.save(this.workingDirectory, usage.usedTokens, name);
+    return this.pool.saveActiveSession(name);
   }
 
   resumeSession(sessionId: string): boolean {
-    const snapshot = loadSessionSnapshot(this.workingDirectory, sessionId);
-    if (!snapshot) return false;
-    this.session.loadSnapshot(snapshot);
-    return true;
+    const resumed = this.pool.resumeSessionFromSnapshot(sessionId);
+    return Boolean(resumed);
   }
 
   listSessions(): SessionSnapshot[] {
-    return listSessionSnapshots(this.workingDirectory);
+    return this.pool.listSavedSnapshots();
   }
 
   deleteSession(sessionId: string): boolean {
-    return deleteSessionSnapshot(this.workingDirectory, sessionId);
+    return this.pool.deleteSavedSnapshot(sessionId);
   }
 
   deleteAllSessions(): number {
     return deleteAllSessionSnapshots(this.workingDirectory);
   }
 
-
   exportSession(sessionId?: string, targetPath?: string): string {
-    let snapshot: SessionSnapshot | null = null;
-    if (sessionId && sessionId !== this.session.sessionId) {
-      snapshot = loadSessionSnapshot(this.workingDirectory, sessionId);
-    }
-    if (!snapshot) {
-      const usage = this.getContextUsage();
-      snapshot = this.session.toSnapshot(this.workingDirectory, usage.usedTokens);
-    }
-    return exportSessionToMarkdown(snapshot, targetPath);
+    return this.pool.exportSession(sessionId, targetPath);
   }
-
-
-
 
   async run(userInput: string, callbacks: AgentCallbacks = {}): Promise<string> {
-    // 1. Add User message to session
-    this.session.addMessage({
-      role: 'user',
-      content: userInput,
+    const active = this.pool.activeSession;
+    return active.run(userInput, {
+      onReasoningChunk: callbacks.onReasoningChunk,
+      onTextChunk: callbacks.onTextChunk,
+      onToolCallStart: callbacks.onToolCallStart,
+      onToolCallResult: callbacks.onToolCallResult,
+      onConfirm: callbacks.onConfirm,
     });
-
-    let currentStep = 0;
-    let finalAssistantReply = '';
-
-    while (currentStep < this.maxSteps) {
-      currentStep++;
-
-      // 2. Prepare context with sliding window / system prompt
-      const messages = this.contextManager.prepareMessages(this.session.messages);
-
-      // 3. Get tools allowed for current security mode
-      const toolDefs = this.dispatcher.registry.getToolDefinitionsForMode(this.securityMode);
-
-      // 4. Stream LLM Response
-      let currentContent = '';
-      let currentReasoning = '';
-      let currentToolCalls: ToolCall[] | undefined;
-
-      const stream = this.llmClient.chatStream(messages, {
-        model: this.activeModel.id,
-        tools: toolDefs.length > 0 ? toolDefs : undefined,
-        thinkingEffort: this.thinkingEffort,
-      });
-
-
-      for await (const event of stream) {
-        if (event.type === 'reasoning') {
-          currentReasoning += event.delta;
-          callbacks.onReasoningChunk?.(event.delta);
-        } else if (event.type === 'text') {
-          currentContent += event.delta;
-          callbacks.onTextChunk?.(event.delta);
-        } else if (event.type === 'tool_call_start') {
-          callbacks.onToolCallStart?.(event.name, event.id);
-        } else if (event.type === 'done') {
-          currentContent = event.fullContent;
-          currentReasoning = event.fullReasoning || '';
-          currentToolCalls = event.toolCalls;
-        }
-      }
-
-      // 5. Record Assistant response in session
-      const assistantMsg: ChatMessage = {
-        role: 'assistant',
-        content: currentContent || null,
-        reasoning_content: currentReasoning || undefined,
-        tool_calls: currentToolCalls && currentToolCalls.length > 0 ? currentToolCalls : undefined,
-      };
-      this.session.addMessage(assistantMsg);
-
-      finalAssistantReply = currentContent;
-
-      // 6. If no tool calls were requested, we are done!
-      if (!currentToolCalls || currentToolCalls.length === 0) {
-        break;
-      }
-
-      // 7. Execute all tool calls
-      const executionContext: ToolExecutionContext = {
-        workingDirectory: this.workingDirectory,
-        securityMode: this.securityMode,
-        isWorkspaceTrusted: this.isWorkspaceTrusted,
-        confirmAction: callbacks.onConfirm,
-      };
-
-
-      for (const tc of currentToolCalls) {
-        const toolName = tc.function.name;
-        const toolArgs = tc.function.arguments;
-
-        const dispatchResult = await this.dispatcher.dispatch(
-          toolName,
-          toolArgs,
-          executionContext
-        );
-
-        callbacks.onToolCallResult?.(
-          toolName,
-          dispatchResult.result.output,
-          dispatchResult.durationMs,
-          dispatchResult.result.success
-        );
-
-        // Record tool output in session
-        const toolMsg: ChatMessage = {
-          role: 'tool',
-          name: toolName,
-          tool_call_id: tc.id,
-          content: dispatchResult.result.output,
-        };
-        this.session.addMessage(toolMsg);
-      }
-    }
-
-    // Auto-save active session snapshot to ~/.qingmei/sessions/
-    this.saveActiveSession();
-
-    return finalAssistantReply;
   }
 }
-

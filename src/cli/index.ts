@@ -16,7 +16,7 @@ export function createCli(): Command {
   program
     .name('qingmei')
     .description('A modern TypeScript Agent CLI with MCP and Skill integration')
-    .version('0.0.1')
+    .version('0.0.2')
     .action(async () => {
       await startRepl();
     });

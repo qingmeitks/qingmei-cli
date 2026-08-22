@@ -12,6 +12,15 @@ export interface SlashCommandInfo {
 }
 
 export const SLASH_COMMANDS: SlashCommandInfo[] = [
+  { command: '/new', description: 'Create and switch to a new session' },
+  { command: '/switch', description: 'Switch active session' },
+  { command: '/sessions', description: 'List all open sessions and saved snapshots' },
+  { command: '/rename', description: 'Rename current active session' },
+  { command: '/close', description: 'Close current or specified session' },
+  { command: '/save', description: 'Save current session snapshot to disk' },
+  { command: '/resume', description: 'Resume a saved snapshot from disk' },
+  { command: '/delete', description: 'Delete a saved snapshot from disk' },
+  { command: '/export', description: 'Export current session to Markdown report' },
   { command: '/mode', description: 'Switch mode: interactive, auto, readonly, chat' },
   { command: '/model', description: 'Switch AI model & provider' },
   { command: '/effort', description: 'Set reasoning effort: off, low, medium, high' },
@@ -20,12 +29,12 @@ export const SLASH_COMMANDS: SlashCommandInfo[] = [
   { command: '/trust', description: 'Trust current workspace to enable full tools' },
   { command: '/untrust', description: 'Untrust current workspace (restricted mode)' },
   { command: '/compact', description: 'Compact and optimize context memory' },
-  { command: '/session', description: 'Manage sessions: -l (list), -s (save), -r (resume), -d (delete), -e (export)' },
-  { command: '/clear', description: 'Clear screen and reset conversation memory' },
+  { command: '/session', description: 'Session commands (new, switch, list, save, resume, delete, export)' },
+  { command: '/clear', description: 'Clear screen viewport (retains session memory)' },
   { command: '/config', description: 'Show current configuration' },
   { command: '/help', description: 'Show help message' },
-  { command: '/exit', description: 'Exit REPL' },
-  { command: '/quit', description: 'Exit REPL' },
+  { command: '/exit', description: 'Exit Qingmei REPL' },
+  { command: '/quit', description: 'Exit Qingmei REPL' },
 ];
 
 export interface TuiPromptOptions {
@@ -35,6 +44,7 @@ export interface TuiPromptOptions {
   isWorkspaceTrusted?: boolean;
   thinkingEffort?: ThinkingEffort;
   contextUsage?: string;
+  sessionBarText?: string;
 }
 
 export interface ModalOption {
@@ -249,7 +259,6 @@ export function scanWorkspaceFiles(workspaceRoot: string, maxFiles: number = 300
       const fullPath = path.join(currentDir, entry.name);
       const relPath = path.relative(workspaceRoot, fullPath);
 
-
       if (entry.isDirectory()) {
         walk(fullPath, depth + 1);
       } else if (entry.isFile()) {
@@ -270,6 +279,7 @@ export class TuiPrompt {
   private isWorkspaceTrusted: boolean = true;
   private thinkingEffort: ThinkingEffort = 'medium';
   private contextUsage: string = '0/1M (<0.1%)';
+  private sessionBarText: string = '';
   private history: string[] = [];
   private liveLines: string[] = [];
   private inputHistory: string[] = [];
@@ -285,7 +295,7 @@ export class TuiPrompt {
   private spinnerStartTime: number = 0;
   private spinnerTimer: NodeJS.Timeout | null = null;
   private spinnerIndex: number = 0;
-  private spinnerFrames: string[] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  private spinnerFrames: string[] = ['-', '\\', '|', '/'];
 
   // Native Centered Modal State
   private activeModal: ModalState | null = null;
@@ -297,6 +307,7 @@ export class TuiPrompt {
     this.isWorkspaceTrusted = options.isWorkspaceTrusted !== false;
     this.thinkingEffort = options.thinkingEffort || 'medium';
     this.contextUsage = options.contextUsage || '0/1M (<0.1%)';
+    this.sessionBarText = options.sessionBarText || '';
   }
 
   getWorkspaceFiles(): string[] {
@@ -320,52 +331,53 @@ export class TuiPrompt {
       .slice(0, 6);
 
     return {
-      query: match[1],
+      query,
       startIndex: match.index,
       matches,
     };
   }
 
   startSpinner(label: string = 'Thinking...'): void {
+    if (this.spinnerActive) return;
     this.spinnerActive = true;
     this.spinnerLabel = label;
     this.spinnerStartTime = Date.now();
     this.spinnerIndex = 0;
-    if (this.spinnerTimer) {
-      clearInterval(this.spinnerTimer);
-    }
+
     this.spinnerTimer = setInterval(() => {
       this.spinnerIndex = (this.spinnerIndex + 1) % this.spinnerFrames.length;
       this.renderBox('', 0, 0);
-    }, 80);
-    this.renderBox('', 0, 0);
+    }, 100);
   }
 
   updateSpinner(label: string): void {
     this.spinnerLabel = label;
-    this.renderBox('', 0, 0);
   }
 
   stopSpinner(): void {
+    if (!this.spinnerActive) return;
     this.spinnerActive = false;
-    this.spinnerLabel = '';
     if (this.spinnerTimer) {
       clearInterval(this.spinnerTimer);
       this.spinnerTimer = null;
     }
-    this.renderBox('', 0, 0);
   }
 
   updateState(
-    mode: SecurityMode,
-    model: ModelMetadata,
+    mode?: SecurityMode,
+    model?: ModelMetadata,
     isWorkspaceTrusted?: boolean,
     thinkingEffort?: ThinkingEffort,
-    contextUsage?: string
+    contextUsage?: string,
+    sessionBarText?: string
   ): void {
-    this.mode = mode;
-    this.model = model;
-    if (typeof isWorkspaceTrusted === 'boolean') {
+    if (mode) {
+      this.mode = mode;
+    }
+    if (model) {
+      this.model = model;
+    }
+    if (isWorkspaceTrusted !== undefined) {
       this.isWorkspaceTrusted = isWorkspaceTrusted;
     }
     if (thinkingEffort) {
@@ -373,6 +385,9 @@ export class TuiPrompt {
     }
     if (contextUsage) {
       this.contextUsage = contextUsage;
+    }
+    if (sessionBarText !== undefined) {
+      this.sessionBarText = sessionBarText;
     }
   }
 
@@ -469,22 +484,14 @@ export class TuiPrompt {
     return SLASH_COMMANDS.filter((cmd) => cmd.command.toLowerCase().startsWith(prefix));
   }
 
-  private buildModalLines(contentWidth: number): string[] {
+  renderModalOverlay(contentWidth: number): string[] {
     if (!this.activeModal) return [];
 
     const lines: string[] = [];
 
     if (this.activeModal.type === 'select') {
       const { title, options, selectedIndex } = this.activeModal;
-      let maxContentW = getStringWidth(title) + 4;
-      for (const opt of options) {
-        const lineLen = getStringWidth(opt.label) + (opt.hint ? getStringWidth(opt.hint) + 3 : 0) + 6;
-        if (lineLen > maxContentW) {
-          maxContentW = lineLen;
-        }
-      }
-
-      const modalWidth = Math.min(contentWidth - 4, Math.max(52, maxContentW + 8));
+      const modalWidth = Math.min(contentWidth - 4, 64);
       const modalInner = modalWidth - 2;
 
       const modalRow = (text: string) => {
@@ -494,7 +501,7 @@ export class TuiPrompt {
         return `${chalk.cyan('│')}  ${fitted}${' '.repeat(pad)}  ${chalk.cyan('│')}`;
       };
 
-      const titleText = ` ${chalk.bold.whiteBright(title)} `;
+      const titleText = ` ${chalk.bold.cyanBright(title)} `;
       const titleLen = getStringWidth(titleText);
       const topDashTotal = Math.max(0, modalInner - titleLen);
       const topDashLeft = 2;
@@ -520,18 +527,18 @@ export class TuiPrompt {
         const hintStr = opt.hint ? chalk.dim(` (${opt.hint})`) : '';
 
         if (isSelected) {
-          const pointer = chalk.cyanBright('●');
+          const pointer = chalk.cyanBright('>');
           const labelStr = chalk.bold.cyanBright(opt.label);
           lines.push(modalRow(`  ${pointer} ${labelStr}${hintStr}`));
         } else {
-          const pointer = chalk.dim('○');
+          const pointer = ' ';
           const labelStr = chalk.white(opt.label);
           lines.push(modalRow(`  ${pointer} ${labelStr}${hintStr}`));
         }
       }
 
       lines.push(modalRow(''));
-      lines.push(modalRow(chalk.dim('(↑/↓ Select, Enter Confirm, Esc Cancel)')));
+      lines.push(modalRow(chalk.dim('(Up/Down Select, Enter Confirm, Esc Cancel)')));
       lines.push(bottomBorder);
 
     } else if (this.activeModal.type === 'confirm') {
@@ -561,7 +568,7 @@ export class TuiPrompt {
       const noBtn = selectedIndex === 1 ? chalk.bgRed.white.bold('  [ No ]  ') : chalk.dim('  [ No ]  ');
       lines.push(modalRow(`    ${yesBtn}      ${noBtn}`));
       lines.push(modalRow(''));
-      lines.push(modalRow(chalk.dim('(←/→ or Tab to toggle, Enter Confirm, Esc Cancel)')));
+      lines.push(modalRow(chalk.dim('(Left/Right or Tab toggle, Enter Confirm, Esc Cancel)')));
       lines.push(`${chalk.cyan('└')}${chalk.cyan('─'.repeat(modalInner))}${chalk.cyan('┘')}`);
 
     } else if (this.activeModal.type === 'text') {
@@ -602,15 +609,14 @@ export class TuiPrompt {
     const cols = process.stdout.columns || 80;
     const rows = process.stdout.rows || 24;
 
-    const outerPadX = 2; // Outer horizontal margin (2 spaces left & right)
+    const outerPadX = 2; // Outer horizontal margin
     const outerPad = ' '.repeat(outerPadX);
 
     // Calculate box dimensions with outer padding
     const boxWidth = Math.max(40, cols - outerPadX * 2);
     const innerWidth = boxWidth - 2; // Space between ┌ and ┐
-    const contentWidth = innerWidth - 4; // Space with 2 spaces inner padding on left & right
+    const contentWidth = innerWidth - 4; // Space with inner padding
 
-    // Outer box height spans available rows with 1 row margin top & bottom
     const totalBoxHeight = Math.max(12, rows - 2);
 
     const formatRow = (content: string): string => {
@@ -624,11 +630,11 @@ export class TuiPrompt {
     const bottomBorder = `${outerPad}${chalk.dim('└')}${chalk.dim('─'.repeat(innerWidth))}${chalk.dim('┘')}`;
     const innerDivider = `${outerPad}${chalk.dim('│')}  ${chalk.dim('─'.repeat(contentWidth))}  ${chalk.dim('│')}`;
 
-    // Top Section: Title & Subtitle
+    // Top Section: Title & Subtitle (Pristine ASCII header untouched)
     const topLines: string[] = [
       topBorder,
       formatRow(chalk.bold.cyanBright('█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █')),
-      formatRow(chalk.bold.cyanBright('▀▀█ █ █ ▀█ █▄█ █ ▀ █ ██▄ █') + chalk.bold.whiteBright('   CLI v0.0.1')),
+      formatRow(chalk.bold.cyanBright('▀▀█ █ █ ▀█ █▄█ █ ▀ █ ██▄ █') + chalk.bold.whiteBright('   CLI v0.0.2')),
       formatRow(chalk.dim('Type your request, @file, !cmd, or slash commands (e.g. /help, /mode, /model, /exit)')),
       formatRow(''),
       formatRow(''),
@@ -643,12 +649,13 @@ export class TuiPrompt {
       const firstLine = lines[0];
       const totalCount = lines.length;
       inputPrompt = `${chalk.cyan('> ')}${firstLine} ${chalk.cyanBright.dim(`(+${totalCount - 1} lines)`)}`;
-      // Position cursor at end of first line preview or text
       visualCursorOffset = getStringWidth(firstLine);
     } else {
       inputPrompt = `${chalk.cyan('> ')}${buffer}`;
       visualCursorOffset = getStringWidth(buffer.slice(0, cursorIndex));
     }
+
+    const secondStatusLine = this.sessionBarText || this.getPathBarText(contentWidth);
 
     const bottomDockLines: string[] = [
       formatRow(''), // Breathing room above input dock
@@ -656,7 +663,7 @@ export class TuiPrompt {
       formatRow(inputPrompt),
       innerDivider,
       formatRow(this.getStatusBarText(contentWidth)),
-      formatRow(this.getPathBarText(contentWidth)),
+      formatRow(secondStatusLine),
       bottomBorder,
     ];
 
@@ -698,142 +705,81 @@ export class TuiPrompt {
       middleLines.push(formatRow(''));
     }
 
-    // Centered Native Modal Overlay (if active modal is open)
+    // Floating overlay rendering
     if (this.activeModal) {
-      const modalRawLines = this.buildModalLines(contentWidth);
-      const modalHeight = modalRawLines.length;
-      const modalStartRow = Math.max(0, Math.floor((middleLines.length - modalHeight) / 2));
+      const modalRows = this.renderModalOverlay(contentWidth);
+      const modalHeight = modalRows.length;
+      const startInject = Math.max(0, Math.floor((viewportHeight - modalHeight) / 2));
 
-      for (let i = 0; i < modalHeight && (modalStartRow + i) < middleLines.length; i++) {
-        const mLine = modalRawLines[i];
-        const mVisualWidth = getStringWidth(mLine);
-        const padLeft = Math.max(0, Math.floor((contentWidth - mVisualWidth) / 2));
-        const centeredLine = ' '.repeat(padLeft) + mLine;
-        middleLines[modalStartRow + i] = formatRow(centeredLine);
-      }
-    } else if (buffer.startsWith('/')) {
-      // Floating Card for Slash Commands
-      const matches = this.getMatchingCommands(buffer);
-      if (matches.length > 0) {
-        let selIdx = selectedIndex;
-        if (selIdx >= matches.length) selIdx = matches.length - 1;
-        if (selIdx < 0) selIdx = 0;
-
-        let maxLen = 0;
-        for (const m of matches) {
-          const l = getStringWidth(m.command) + getStringWidth(m.description) + 8;
-          if (l > maxLen) maxLen = l;
-        }
-
-        const cardWidth = Math.min(contentWidth - 4, Math.max(54, maxLen + 6));
-        const cardInner = cardWidth - 2;
-
-        const cardRow = (text: string) => {
-          const fitted = truncateAnsi(text, cardInner - 4);
-          const pad = Math.max(0, cardInner - 4 - getStringWidth(fitted));
-          return `${chalk.cyan('│')}  ${fitted}${' '.repeat(pad)}  ${chalk.cyan('│')}`;
-        };
-
-        const titleText = ` ${chalk.bold.cyanBright('Commands')} `;
-        const topDashTotal = Math.max(0, cardInner - getStringWidth(titleText));
-        const topDashLeft = 2;
-        const topDashRight = Math.max(0, topDashTotal - topDashLeft);
-
-        const cardLines: string[] = [];
-        cardLines.push(`${chalk.cyan('┌')}${chalk.cyan('─'.repeat(topDashLeft))}${titleText}${chalk.cyan('─'.repeat(topDashRight))}${chalk.cyan('┐')}`);
-
-        for (let i = 0; i < matches.length; i++) {
-          const m = matches[i];
-          if (i === selIdx) {
-            const pointer = chalk.cyanBright('●');
-            const cmdStr = chalk.cyanBright.bold(m.command.padEnd(10));
-            const descStr = chalk.white(m.description);
-            cardLines.push(cardRow(` ${pointer} ${cmdStr} ${descStr}`));
-          } else {
-            const pointer = chalk.dim('○');
-            const cmdStr = chalk.dim(m.command.padEnd(10));
-            const descStr = chalk.dim(m.description);
-            cardLines.push(cardRow(` ${pointer} ${cmdStr} ${descStr}`));
-          }
-        }
-
-        cardLines.push(cardRow(chalk.dim('(↑/↓ Select, Enter Choose, Tab Complete, Esc Cancel)')));
-        cardLines.push(`${chalk.cyan('└')}${chalk.cyan('─'.repeat(cardInner))}${chalk.cyan('┘')}`);
-
-        const overlayStart = Math.max(0, middleLines.length - cardLines.length);
-        for (let i = 0; i < cardLines.length && (overlayStart + i) < middleLines.length; i++) {
-          const cLine = cardLines[i];
-          const padLeft = Math.max(0, Math.floor((contentWidth - getStringWidth(cLine)) / 2));
-          middleLines[overlayStart + i] = formatRow(' '.repeat(padLeft) + cLine);
-        }
+      for (let i = 0; i < modalHeight && startInject + i < middleLines.length; i++) {
+        const modalLine = modalRows[i];
+        const modalW = getStringWidth(modalLine);
+        const leftSpace = Math.max(0, Math.floor((contentWidth - modalW) / 2));
+        const rightSpace = Math.max(0, contentWidth - modalW - leftSpace);
+        middleLines[startInject + i] = `${outerPad}${chalk.dim('│')}  ${' '.repeat(leftSpace)}${modalLine}${' '.repeat(rightSpace)}  ${chalk.dim('│')}`;
       }
     } else {
-      // Floating Card for @ Mention Files
+      // Check @mention overlay
       const mentionData = this.getMentionMatches(buffer, cursorIndex);
       if (mentionData && mentionData.matches.length > 0) {
-        let selIdx = selectedIndex;
-        if (selIdx >= mentionData.matches.length) selIdx = mentionData.matches.length - 1;
-        if (selIdx < 0) selIdx = 0;
+        const matches = mentionData.matches;
+        const maxOverlay = Math.min(matches.length, 5);
+        const overlayRows: string[] = [];
 
-        let maxLen = getStringWidth(mentionData.query) + 20;
-        for (const f of mentionData.matches) {
-          const l = getStringWidth(f) + 8;
-          if (l > maxLen) maxLen = l;
-        }
-
-        const cardWidth = Math.min(contentWidth - 4, Math.max(54, maxLen + 6));
-        const cardInner = cardWidth - 2;
-
-        const cardRow = (text: string) => {
-          const fitted = truncateAnsi(text, cardInner - 4);
-          const pad = Math.max(0, cardInner - 4 - getStringWidth(fitted));
-          return `${chalk.cyan('│')}  ${fitted}${' '.repeat(pad)}  ${chalk.cyan('│')}`;
-        };
-
-        const titleText = ` ${chalk.bold.cyanBright(`Mention File (@${mentionData.query})`)} `;
-        const topDashTotal = Math.max(0, cardInner - getStringWidth(titleText));
-        const topDashLeft = 2;
-        const topDashRight = Math.max(0, topDashTotal - topDashLeft);
-
-        const cardLines: string[] = [];
-        cardLines.push(`${chalk.cyan('┌')}${chalk.cyan('─'.repeat(topDashLeft))}${titleText}${chalk.cyan('─'.repeat(topDashRight))}${chalk.cyan('┐')}`);
-
-        for (let i = 0; i < mentionData.matches.length; i++) {
-          const filePath = mentionData.matches[i];
-          if (i === selIdx) {
-            const pointer = chalk.cyanBright('●');
-            const fileStr = chalk.bold.cyanBright(filePath);
-            cardLines.push(cardRow(` ${pointer} @${fileStr}`));
+        for (let i = 0; i < maxOverlay; i++) {
+          const file = matches[i];
+          const isSelected = i === selectedIndex;
+          if (isSelected) {
+            overlayRows.push(chalk.bgCyan.black.bold(` > @${file} `));
           } else {
-            const pointer = chalk.dim('○');
-            const fileStr = chalk.white(filePath);
-            cardLines.push(cardRow(` ${pointer} @${fileStr}`));
+            overlayRows.push(chalk.dim(`   @${file} `));
           }
         }
 
-        cardLines.push(cardRow(chalk.dim('(↑/↓ Select, Tab/Enter Complete, Esc Cancel)')));
-        cardLines.push(`${chalk.cyan('└')}${chalk.cyan('─'.repeat(cardInner))}${chalk.cyan('┘')}`);
+        const injectStart = Math.max(0, middleLines.length - overlayRows.length);
+        for (let i = 0; i < overlayRows.length; i++) {
+          middleLines[injectStart + i] = formatRow(overlayRows[i]);
+        }
+      } else if (buffer.startsWith('/') && !buffer.includes(' ')) {
+        // Check slash suggestions overlay
+        const matches = this.getMatchingCommands(buffer);
+        if (matches.length > 0) {
+          const maxOverlay = Math.min(matches.length, 5);
+          const overlayRows: string[] = [];
 
-        const overlayStart = Math.max(0, middleLines.length - cardLines.length);
-        for (let i = 0; i < cardLines.length && (overlayStart + i) < middleLines.length; i++) {
-          const cLine = cardLines[i];
-          const padLeft = Math.max(0, Math.floor((contentWidth - getStringWidth(cLine)) / 2));
-          middleLines[overlayStart + i] = formatRow(' '.repeat(padLeft) + cLine);
+          for (let i = 0; i < maxOverlay; i++) {
+            const cmd = matches[i];
+            const isSelected = i === selectedIndex;
+            if (isSelected) {
+              overlayRows.push(chalk.bgCyan.black.bold(` > ${cmd.command} `) + chalk.cyanBright(` - ${cmd.description}`));
+            } else {
+              overlayRows.push(chalk.cyan(`   ${cmd.command}`) + chalk.dim(` - ${cmd.description}`));
+            }
+          }
+
+          const injectStart = Math.max(0, middleLines.length - overlayRows.length);
+          for (let i = 0; i < overlayRows.length; i++) {
+            middleLines[injectStart + i] = formatRow(overlayRows[i]);
+          }
         }
       }
     }
 
+    // Assemble all screen rows
+    const allScreenRows = [
+      ...topLines,
+      ...middleLines,
+      ...bottomDockLines,
+    ];
 
-    // Assemble full screen box
-    const allLines = [...topLines, ...middleLines, ...bottomDockLines];
+    // Atomic full-screen draw
+    const outputBuffer = '\x1b[?25l\x1b[H' + allScreenRows.join('\n') + '\n';
+    process.stdout.write(outputBuffer);
 
-    // Absolute screen positioning:
-    // Move to Row 1, Column 1, set cursor to vertical bar (\x1b[6 q), write frame in place, clear below, and position cursor
-    const inputRow = topLines.length + middleLines.length + 3; // 1-indexed row for input row
-    const inputCol = outerPadX + 6 + visualCursorOffset;
-
-    const cursorHideShow = this.activeModal && this.activeModal.type !== 'text' ? '\x1b[?25l' : '\x1b[?25h';
-    process.stdout.write(`\x1b[6 q\x1b[H` + allLines.join('\n') + `\x1b[J` + `${cursorHideShow}\x1b[${inputRow};${inputCol}H`);
+    // Reposition cursor in input box
+    const cursorRow = topLines.length + viewportHeight + 3;
+    const cursorCol = outerPadX + 1 + 2 + 2 + visualCursorOffset + 1;
+    process.stdout.write(`\x1b[${cursorRow};${cursorCol}H\x1b[?25h`);
   }
 
   async selectModal(options: {
@@ -841,7 +787,7 @@ export class TuiPrompt {
     options: ModalOption[];
     initialValue?: string;
   }): Promise<string | null> {
-    if (!process.stdin.isTTY) {
+    if (!process.stdin.isTTY || options.options.length === 0) {
       return options.options[0]?.value || null;
     }
 
@@ -1081,6 +1027,10 @@ export class TuiPrompt {
           return;
         }
 
+        if (key.sequence === '\x1b[200~' || key.sequence === '\x1b[201~' || str === '\x1b[200~' || str === '\x1b[201~') {
+          return;
+        }
+
         if (str && !key.ctrl && !key.meta && !str.startsWith('\x1b') && str.length === 1) {
           buffer = buffer.slice(0, cursorIndex) + str + buffer.slice(cursorIndex);
           cursorIndex++;
@@ -1096,9 +1046,8 @@ export class TuiPrompt {
     });
   }
 
-  async readLine(): Promise<string> {
+  async readLine(callbacks?: { onEmptyTab?: () => void }): Promise<string> {
     if (!process.stdin.isTTY) {
-      // Non-interactive fallback
       return new Promise((resolve) => {
         const rl = readline.createInterface({
           input: process.stdin,
@@ -1136,31 +1085,24 @@ export class TuiPrompt {
       };
       process.stdout.on('resize', onResize);
 
-      // Raw data listener to capture mouse scroll and bracketed paste cleanly
+      let isBracketedPasting = false;
+
       const onRawData = (data: Buffer) => {
         const str = data.toString();
 
-        // Bracketed Paste detection: \x1b[200~ ... \x1b[201~
         if (str.includes('\x1b[200~')) {
-          const pasteMatch = /\x1b\[200~([\s\S]*?)\x1b\[201~/.exec(str);
-          const rawPasted = pasteMatch ? pasteMatch[1] : str.replace(/\x1b\[20[01]~/g, '');
-          const normalized = rawPasted.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-          buffer = buffer.slice(0, cursorIndex) + normalized + buffer.slice(cursorIndex);
-          cursorIndex += normalized.length;
-          historyIndex = -1;
-          render();
-          return;
+          isBracketedPasting = true;
+        }
+        if (str.includes('\x1b[201~')) {
+          isBracketedPasting = false;
         }
 
-        // SGR mouse wheel up: \x1b[<64;...;...M
         if (str.includes('<64;')) {
           const maxScroll = Math.max(0, this.history.length + this.liveLines.length - 5);
           this.scrollOffset = Math.min(maxScroll, this.scrollOffset + 3);
           render();
           return;
         }
-        // SGR mouse wheel down: \x1b[<65;...;...M
         if (str.includes('<65;')) {
           this.scrollOffset = Math.max(0, this.scrollOffset - 3);
           render();
@@ -1173,8 +1115,10 @@ export class TuiPrompt {
 
       const onKeypress = (str: string | undefined, key: readline.Key) => {
         if (!key) return;
+        if (key.sequence === '\x1b[200~' || key.sequence === '\x1b[201~' || str === '\x1b[200~' || str === '\x1b[201~') {
+          return;
+        }
 
-        // Exit / Interrupt
         if (key.ctrl && key.name === 'c') {
           if (buffer.length > 0) {
             buffer = '';
@@ -1195,7 +1139,6 @@ export class TuiPrompt {
           process.exit(0);
         }
 
-        // Escape (clear slash suggestions, @ mention overlay, or buffer)
         if (key.name === 'escape') {
           if (buffer.length > 0) {
             buffer = '';
@@ -1207,7 +1150,6 @@ export class TuiPrompt {
           return;
         }
 
-        // PageUp / PageDown for history scrolling
         if (key.name === 'pageup') {
           const maxScroll = Math.max(0, this.history.length + this.liveLines.length - 5);
           this.scrollOffset = Math.min(maxScroll, this.scrollOffset + 6);
@@ -1220,7 +1162,6 @@ export class TuiPrompt {
           return;
         }
 
-        // Up Arrow Navigation (Slash suggestion, @ Mention overlay, or Command history memory)
         if (key.name === 'up') {
           if (historyIndex === -1 && buffer.startsWith('/') && !buffer.includes(' ')) {
             const matches = this.getMatchingCommands(buffer);
@@ -1238,7 +1179,6 @@ export class TuiPrompt {
             return;
           }
 
-          // Command history navigation
           if (this.inputHistory.length > 0) {
             if (historyIndex === -1) {
               savedInputBuffer = buffer;
@@ -1255,7 +1195,6 @@ export class TuiPrompt {
           return;
         }
 
-        // Down Arrow Navigation (Slash suggestion, @ Mention overlay, or Command history memory)
         if (key.name === 'down') {
           if (historyIndex === -1 && buffer.startsWith('/') && !buffer.includes(' ')) {
             const matches = this.getMatchingCommands(buffer);
@@ -1273,7 +1212,6 @@ export class TuiPrompt {
             return;
           }
 
-          // Command history navigation
           if (historyIndex !== -1) {
             if (historyIndex < this.inputHistory.length - 1) {
               historyIndex++;
@@ -1291,9 +1229,16 @@ export class TuiPrompt {
           return;
         }
 
-        // Enter
-        if (key.name === 'return') {
-          // Check if user is completing an active @mention
+        if (key.name === 'return' || key.name === 'enter') {
+          if (isBracketedPasting) {
+            buffer = buffer.slice(0, cursorIndex) + '\n' + buffer.slice(cursorIndex);
+            cursorIndex++;
+            selectedIndex = 0;
+            historyIndex = -1;
+            render();
+            return;
+          }
+
           const mentionData = this.getMentionMatches(buffer, cursorIndex);
           if (mentionData && mentionData.matches.length > 0) {
             const chosenFile = mentionData.matches[selectedIndex] || mentionData.matches[0];
@@ -1323,8 +1268,16 @@ export class TuiPrompt {
           return;
         }
 
-        // Tab Autocomplete (@mention or Slash command)
+        // Tab Autocomplete or Empty-Tab Switch
         if (key.name === 'tab') {
+          if (buffer.length === 0) {
+            if (callbacks?.onEmptyTab) {
+              callbacks.onEmptyTab();
+              render();
+              return;
+            }
+          }
+
           const mentionData = this.getMentionMatches(buffer, cursorIndex);
           if (mentionData && mentionData.matches.length > 0) {
             const chosenFile = mentionData.matches[selectedIndex] || mentionData.matches[0];
@@ -1350,7 +1303,6 @@ export class TuiPrompt {
           return;
         }
 
-        // Backspace
         if (key.name === 'backspace') {
           if (cursorIndex > 0) {
             buffer = buffer.slice(0, cursorIndex - 1) + buffer.slice(cursorIndex);
@@ -1363,7 +1315,6 @@ export class TuiPrompt {
           return;
         }
 
-        // Left / Right Arrows
         if (key.name === 'left') {
           if (cursorIndex > 0) {
             cursorIndex--;
@@ -1379,10 +1330,9 @@ export class TuiPrompt {
           return;
         }
 
-        // Normal Printable Character
-        if (str && !key.ctrl && !key.meta && !str.startsWith('\x1b') && str.length === 1) {
+        if (str && !key.ctrl && !key.meta && !str.startsWith('\x1b') && !str.includes('\x1b')) {
           buffer = buffer.slice(0, cursorIndex) + str + buffer.slice(cursorIndex);
-          cursorIndex++;
+          cursorIndex += str.length;
           selectedIndex = 0;
           historyIndex = -1;
           this.scrollOffset = 0;
