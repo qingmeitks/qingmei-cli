@@ -23,6 +23,7 @@ export const SLASH_COMMANDS: SlashCommandInfo[] = [
   { command: '/export', description: 'Export current session to Markdown report' },
   { command: '/mode', description: 'Switch mode: interactive, auto, readonly, chat' },
   { command: '/model', description: 'Switch AI model & provider' },
+  { command: '/key', description: 'Manage AI provider API keys (view, update, remove)' },
   { command: '/effort', description: 'Set reasoning effort: off, low, medium, high' },
   { command: '/skills', description: 'View and toggle active skills' },
   { command: '/mcp', description: 'Check MCP server connections and tools' },

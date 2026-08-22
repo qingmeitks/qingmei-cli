@@ -35,7 +35,8 @@
   - 精准识别 1M+ 超长上下文模型（如 DeepSeek-V4 系列、Gemini 3.7 / 3.5 系列），动态调整 Token 预算分配与长上下文提示。
 - **精准厂商预设 (Curated Presets)**：
   - **DeepSeek**：预设 `deepseek-v4-flash`（1M 上下文、支持推理与工具）与 `deepseek-v4-pro`（1M 上下文、支持工具）。
-  - **Google Gemini**：预设 `gemini-3.7-flash`（1M 上下文、支持推理与工具）、`gemini-3.5-flash-lite`（1M 上下文）与 `gemini-3.1-pro-preview`（1M 上下文）。
+  - **Google Gemini**：预设 `gemini-3.5-flash`、`gemini-3.5-flash-lite`、`gemini-3.6-flash`、`gemini-3.7-flash`（1M 上下文、支持推理与工具）与 `gemini-3.1-pro-preview`（1M 上下文）。
+  - **OpenAI**：预设 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.5`（1M 上下文、支持推理与工具）与 `gpt-5.4-mini`（1M 上下文、支持工具）。
 - **Model Context Protocol (MCP) 深度集成**：原生支持基于 `stdio` 进程沙箱与 `sse` 远程端点的 MCP Tools、Resources 和 Prompts，自动隔离命名空间。
 - **Skill 技能扩展体系**：标准 `SKILL.md` 规范解析器，支持全局 `~/.qingmei/skills/` 技能仓库与热插拔注入。
 - **三层指令约束体系 (Layered Instructions)**：
@@ -93,10 +94,11 @@ npm link
 | **`/close [id]`** | 关闭并释放指定会话内存 | `/close 2` |
 | **`/save [name]`** | 命名保存当前会话快照至磁盘 | `/save checkpoint-1` |
 | **`/resume [id]`** | 从磁盘恢复/唤醒历史会话 | `/resume sess_123` |
-| **`/delete [id]`** | 从磁盘删除指定会话快照 | `/delete sess_123` |
+| **`/delete [id]`** | 从磁盘删除指定会话快照（支持 `/delete all` 一键清空） | `/delete sess_123` |
 | **`/export [id]`** | 导出会话为 Markdown 报告 | `/export` |
 | **`/mode [mode]`** | 快速切换运行模式（`interactive` 交互、`auto` 自动、`readonly` 只读、`chat` 纯对话） | `/mode auto` |
-| **`/model [name]`** | 切换 AI 厂商与模型（支持分组选择与 API Key 动态填写） | `/model` |
+| **`/model [name]`** | 切换 AI 厂商与模型（支持就地更新与解绑 API Key） | `/model` |
+| **`/key [prov] [key]`** | 独立管理厂商 API Key（脱敏预览、探活排错、快捷修改、`/key rm <prov>`） | `/key deepseek sk-xxxx` |
 | **`/effort [level]`** | 调整思考/推理强度（`off`, `low`, `medium`, `high`） | `/effort high` |
 | **`/skills`** | 查看已安装的技能列表，并可按需开启或禁用 | `/skills` |
 | **`/mcp`** | 查看已连接的 MCP 服务器健康状态与工具清单 | `/mcp` |

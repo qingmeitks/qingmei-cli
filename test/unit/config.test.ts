@@ -14,6 +14,7 @@ import {
   isUtilityOrNonChatModel,
 } from '../../src/core/llm/client.js';
 import { QingmeiConfig } from '../../src/config/types.js';
+import { DEFAULT_PRESET_CONFIG } from '../../src/config/defaults.js';
 
 
 
@@ -64,6 +65,16 @@ describe('Config Loader & Model Metadata', () => {
     const kimiMeta = getModelMetadata('kimi-k1.5', 'moonshot');
     expect(kimiMeta.is1MContext).toBe(true);
     expect(getContextDisplayBadge(kimiMeta)).toBe('1M');
+
+    const deepseekV4Meta = getModelMetadata('deepseek-v4-flash', 'deepseek');
+    expect(deepseekV4Meta.is1MContext).toBe(true);
+    expect(deepseekV4Meta.contextWindow).toBe(1000000);
+    expect(getContextDisplayBadge(deepseekV4Meta)).toBe('1M');
+
+    const deepseekV4ProMeta = getModelMetadata('deepseek-v4-pro', 'deepseek');
+    expect(deepseekV4ProMeta.is1MContext).toBe(true);
+    expect(deepseekV4ProMeta.contextWindow).toBe(1000000);
+    expect(getContextDisplayBadge(deepseekV4ProMeta)).toBe('1M');
 
     const deepseekMeta = getModelMetadata('deepseek-chat', 'deepseek');
     expect(deepseekMeta.is1MContext).toBe(false);
@@ -146,15 +157,15 @@ describe('Config Loader & Model Metadata', () => {
   });
 
   it('should extract supported model names and default non-explicit models to 200K', () => {
-    const errorMsg = '400 The supported API model names are deepseek-v4-pro or deepseek-v4-flash(1m), but you passed dummy.';
-    const models = extractModelsFromErrorMessage(errorMsg, 'deepseek');
+    const errorMsg = '400 The supported API model names are custom-model-pro or custom-model-flash(1m), but you passed dummy.';
+    const models = extractModelsFromErrorMessage(errorMsg, 'custom');
     expect(models.length).toBe(2);
-    expect(models[0].id).toBe('deepseek-v4-pro');
-    expect(models[1].id).toBe('deepseek-v4-flash(1m)');
-    // deepseek-v4-pro defaults to 200k
+    expect(models[0].id).toBe('custom-model-pro');
+    expect(models[1].id).toBe('custom-model-flash(1m)');
+    // custom-model-pro defaults to 200k
     expect(models[0].contextWindow).toBe(200000);
     expect(getContextDisplayBadge(models[0])).toBe('200k');
-    // deepseek-v4-flash(1m) has explicit 1m -> 1,000,000
+    // custom-model-flash(1m) has explicit 1m -> 1,000,000
     expect(models[1].contextWindow).toBe(1000000);
     expect(getContextDisplayBadge(models[1])).toBe('1M');
   });
@@ -214,8 +225,8 @@ describe('Config Loader & Model Metadata', () => {
   });
 
 
-  it('should have correct default presets for DeepSeek and Gemini, and empty for others', () => {
-    const deepseekModels = getProviderModels('deepseek');
+  it('should have correct default presets for DeepSeek, Gemini, and OpenAI, and empty for others', () => {
+    const deepseekModels = getProviderModels('deepseek', DEFAULT_PRESET_CONFIG);
     expect(deepseekModels.map((m) => m.id)).toEqual(['deepseek-v4-flash', 'deepseek-v4-pro']);
     expect(deepseekModels[0].contextWindow).toBe(1000000);
     expect(deepseekModels[0].is1MContext).toBe(true);
@@ -223,23 +234,39 @@ describe('Config Loader & Model Metadata', () => {
     expect(deepseekModels[1].is1MContext).toBe(true);
 
 
-    const geminiModels = getProviderModels('gemini');
+    const geminiModels = getProviderModels('gemini', DEFAULT_PRESET_CONFIG);
     expect(geminiModels.map((m) => m.id)).toEqual([
-      'gemini-3.7-flash',
+      'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.7-flash',
       'gemini-3.1-pro-preview',
     ]);
     expect(geminiModels[0].is1MContext).toBe(true);
     expect(geminiModels[1].is1MContext).toBe(true);
     expect(geminiModels[2].is1MContext).toBe(true);
+    expect(geminiModels[3].is1MContext).toBe(true);
+    expect(geminiModels[4].is1MContext).toBe(true);
 
-    const openaiModels = getProviderModels('openai');
-    expect(openaiModels).toEqual([]);
-    const anthropicModels = getProviderModels('anthropic');
+    const openaiModels = getProviderModels('openai', DEFAULT_PRESET_CONFIG);
+    expect(openaiModels.map((m) => m.id)).toEqual([
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
+      'gpt-5.5',
+      'gpt-5.4-mini',
+    ]);
+    expect(openaiModels[0].is1MContext).toBe(true);
+    expect(openaiModels[1].is1MContext).toBe(true);
+    expect(openaiModels[2].is1MContext).toBe(true);
+    expect(openaiModels[3].is1MContext).toBe(true);
+    expect(openaiModels[4].is1MContext).toBe(true);
+
+    const anthropicModels = getProviderModels('anthropic', DEFAULT_PRESET_CONFIG);
     expect(anthropicModels).toEqual([]);
-    const grokModels = getProviderModels('grok');
+    const grokModels = getProviderModels('grok', DEFAULT_PRESET_CONFIG);
     expect(grokModels).toEqual([]);
-    const glmModels = getProviderModels('glm');
+    const glmModels = getProviderModels('glm', DEFAULT_PRESET_CONFIG);
     expect(glmModels).toEqual([]);
   });
 

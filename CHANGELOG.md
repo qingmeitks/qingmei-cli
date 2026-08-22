@@ -37,6 +37,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - *Standard Mode (1~4 sessions)*: `[#1 (running)] [#2]* [#3] | ~/path`
     - *Compact Mode (4~6 sessions)*: `[#1 (running)] [#2] [#3] [#4]* [#5] | ~/path`
     - *Ultra-Wide Collapsed Mode (>6 sessions or narrow width)*: `#5* [running] (8 sessions: 2 running, 6 ready) | ~/path`
+- **API Key Management & Smart Fallback (`/key` & `/model`)**:
+  - Dedicated `/key` management center with masked key previews (`sk-****3f9a`), connectivity probes, and error diagnosis.
+  - Parameterized updates (`/key deepseek sk-xxxx`) and direct removals (`/key rm deepseek`).
+  - **Runtime Client Hot-Reloading**: update active provider keys without process restarts or losing context history.
+  - **In-Flow Management in `/model`**: easily update or unbind credentials directly when selecting configured providers.
+  - **Smart Post-Remove Fallback**: guided auto-switch to alternative configured providers when the active key is removed.
+- **Expanded Google Gemini Model Presets**:
+  - Added official presets for `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-3.7-flash`, and `gemini-3.1-pro-preview` (all supporting 1M+ context window).
+- **Curated OpenAI GPT-5.x Model Presets**:
+  - Enabled OpenAI provider with presets for `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5` (1M context, tools + reasoning), and `gpt-5.4-mini` (1M context, tools).
 - **Exit Guard**:
   - Intercepts `/quit` and `/exit` if background sessions are still active (`[running]` or `[waiting]`), prompting a confirmation warning before force termination.
 

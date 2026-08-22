@@ -64,11 +64,14 @@
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │                     LLMClient 多厂商模型适配层 (OpenAI 协议)           │
-│  ┌───────────────────────────┐         ┌────────────────────────────┐  │
-│  │ DeepSeek 官方预设         │         │ Google Gemini 官方预设     │  │
-│  │ deepseek-v4-flash [1M]    │         │ gemini-3.7-flash [1M]      │  │
-│  │ deepseek-v4-pro [1M]      │         │ gemini-3.5-flash-lite [1M] │  │
-│  └───────────────────────────┘         └────────────────────────────┘  │
+│  ┌──────────────────┐  ┌───────────────────────┐  ┌─────────────────┐  │
+│  │ DeepSeek 预设    │  │ Google Gemini 预设    │  │ OpenAI 预设     │  │
+│  │ deepseek-v4-flash│  │ gemini-3.5-flash      │  │ gpt-5.6-sol     │  │
+│  │ deepseek-v4-pro  │  │ gemini-3.5-flash-lite │  │ gpt-5.6-terra   │  │
+│  │                  │  │ gemini-3.6-flash      │  │ gpt-5.6-luna    │  │
+│  │                  │  │ gemini-3.7-flash      │  │ gpt-5.5         │  │
+│  │                  │  │ gemini-3.1-pro-preview│  │ gpt-5.4-mini    │  │
+│  └──────────────────┘  └───────────────────────┘  └─────────────────┘  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -110,3 +113,45 @@
 当输入 `/quit` 或 `/exit` 时：
 - 若所有会话均处于空闲状态，自动持久化当前活动会话并安全退出。
 - 若存在后台正在执行中的会话（`[running]` 或 `[waiting]`），主动弹出居中警告模态框，告知当前正在运行的会话列表，由用户确认是否强制终止并退出。
+
+---
+
+## 4. API Key 动态管理与智能降级架构 (v0.0.2)
+
+### 4.1 独立密钥管理中心 (`/key` 与 `/apikey`)
+- **交互式管理**：直接输入 `/key`，列出所有支持厂商的脱敏 Key 预览（如 `DeepSeek (sk-****3f9a)`、`Google Gemini (AIza****782b)`、`OpenAI [unconfigured]`）。
+- **二级操作菜单**：
+  - `[ Update API Key ]`：修改/配置该厂商的 Key。
+  - `[ Test Connection / Auth ]`：快速发起连通性探活，测试 Key 是否有效。
+  - `[ Remove / Unbind API Key ]`：清除该厂商 Key。
+- **参数化快捷直达**：
+  - `/key deepseek sk-xxxx`：一行命令静默校验并更新。
+  - `/key rm deepseek` 或 `/key delete deepseek`：一行命令解绑。
+
+### 4.2 连通性探测自测与错误诊断建议 (Verification & Suggestions)
+- 更新/输入新 Key 时，系统使用轻量探活探测凭证有效性（耗时 < 800ms，0 额度损耗）。
+- **验证失败时**，弹出居中诊断模态框：
+  - **错误诊断**：呈现具体原因（如 `Error: 401 Unauthorized - Incorrect API key provided`）。
+  - **排查建议**：检查 Key 是否过期/撤回、检查末尾是否混入空格、检查账户余额及代理连通性。
+  - **三向操作选项**：`[ Re-enter API Key ]`（重输） / `[ Save Anyway ]`（强存） / `[ Cancel ]`（放弃）。
+
+### 4.3 运行时客户端热重载与模型选用流转 (Runtime Hot-Reloading & Model Flow)
+- **更新当前活动厂商 Key**：即刻热重载内存中的 `agent.llmClient` 与多会话并发池，不中断会话。
+- **更新非当前厂商 Key**：直接弹出直观选择菜单：
+  - `> [ Switch to <Provider> (<defaultModel>) ]`（直接切换至该厂商的默认模型，一键生效）
+  - `  [ Select specific model for <Provider> ]`（立即进入该厂商的模型列表挑选特定模型）
+  - `  [ Keep current model (<activeModel>) ]`（保存 Key 但不切换当前活动模型）
+- **消除冲突**：无论是通过 `/key` 还是 `/model` 输入 Key，均收敛至上述统一步骤，不再出现“先确认默认模型又重复弹出模型列表”的冲突逻辑。
+
+### 4.4 `/model` 流程中的就地维护增强
+- 输入 `/model` 选择已配置厂商时，弹出选项：
+  - `> [ Select Model ]`（默认高亮，按回车直接进入模型选择，对正常切模型 0 干扰）。
+  - `  [ Update API Key ]`：就地修改 Key。
+  - `  [ Remove API Key ]`：就地解绑 Key。
+
+### 4.5 删除 Key 智能降级策略 (Smart Fallback)
+- **删除非当前厂商的 Key**：当前运行模型与会话不受任何影响。
+- **删除当前活动厂商的 Key**：
+  - 若系统中还有其他可用厂商（如 Gemini），弹出选择器推荐**一键平滑降级切换**至该模型，并即时刷新底部状态栏。
+  - 若所有厂商均无有效 Key，主动拦截并引导重新输入。
+

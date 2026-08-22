@@ -35,7 +35,8 @@
   - Automatically identifies 1M+ context models (DeepSeek-V4 series, Gemini 3.7 / 3.5 series) and dynamically scales token budgeting and prompt strategies.
 - **Curated Model Presets**:
   - **DeepSeek**: Pre-configured with `deepseek-v4-flash` (1M context, tools + reasoning) and `deepseek-v4-pro` (1M context, tools).
-  - **Google Gemini**: Pre-configured with `gemini-3.7-flash` (1M context, tools + reasoning), `gemini-3.5-flash-lite` (1M context), and `gemini-3.1-pro-preview` (1M context).
+  - **Google Gemini**: Pre-configured with `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-3.7-flash` (1M context, tools + reasoning), and `gemini-3.1-pro-preview` (1M context).
+  - **OpenAI**: Pre-configured with `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5` (1M context, tools + reasoning), and `gpt-5.4-mini` (1M context, tools).
 - **Model Context Protocol (MCP)**: Native support for MCP Tools, Resources, and Prompts over `stdio` process sandboxes and remote `sse` transports, with automatic namespace isolation (`mcp__<server>__<tool>`).
 - **Skill Extension Engine**: Standard `SKILL.md` parser and global skill registry in `~/.qingmei/skills/` with hot-pluggable injection.
 - **Layered Instruction Rules**:
@@ -93,10 +94,11 @@ Within the `qingmei` interactive prompt, type `/` to view suggestions with `Tab`
 | **`/close [id]`** | Close and release specified session from memory | `/close 2` |
 | **`/save [name]`** | Save current session snapshot to disk | `/save checkpoint-1` |
 | **`/resume [id]`** | Resume a saved snapshot from disk into memory | `/resume sess_123` |
-| **`/delete [id]`** | Delete a saved snapshot file from disk | `/delete sess_123` |
+| **`/delete [id]`** | Delete a saved snapshot file from disk (`/delete all` supported) | `/delete sess_123` |
 | **`/export [id]`** | Export session to Markdown report | `/export` |
 | **`/mode [mode]`** | Switch running mode (`interactive`, `auto`, `readonly`, `chat`) | `/mode auto` |
-| **`/model [name]`** | Switch AI model and provider | `/model` |
+| **`/model [name]`** | Switch AI model and provider (with in-flow Key management) | `/model` |
+| **`/key [prov] [key]`** | Manage API Keys (masked preview, connectivity probe, update, `/key rm <prov>`) | `/key deepseek sk-xxxx` |
 | **`/effort [level]`** | Adjust reasoning / thinking effort (`off`, `low`, `medium`, `high`) | `/effort high` |
 | **`/skills`** | View installed skills and toggle them on/off | `/skills` |
 | **`/mcp`** | Check connected MCP servers health and registered tool count | `/mcp` |

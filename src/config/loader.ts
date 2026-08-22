@@ -313,5 +313,91 @@ export function getContextDisplayBadge(metadata: ModelMetadata): string {
   return `${k}k`;
 }
 
+export function maskApiKey(key?: string): string {
+  if (!key || key.trim().length === 0) {
+    return '(not set)';
+  }
+  const clean = key.trim();
+  if (clean.length <= 8) {
+    return '****';
+  }
+  const prefix = clean.slice(0, 4);
+  const suffix = clean.slice(-4);
+  return `${prefix}****${suffix}`;
+}
+
+export function setProviderApiKey(providerId: string, apiKey: string, baseUrl?: string): QingmeiConfig {
+  const conf = loadConfig();
+  const def = getProviderDefinition(providerId);
+  const prov = conf.providers[providerId] || {};
+
+  const updatedProviders = {
+    ...conf.providers,
+    [providerId]: {
+      ...prov,
+      apiKey: apiKey.trim(),
+      baseUrl: baseUrl || prov.baseUrl || def?.defaultBaseUrl || 'https://api.openai.com/v1',
+    },
+  };
+
+  const updatedConfig = saveConfig({
+    providers: updatedProviders,
+  });
+
+  return updatedConfig;
+}
+
+export function removeProviderApiKey(providerId: string): QingmeiConfig {
+  const conf = loadConfig();
+  const prov = conf.providers[providerId] || {};
+
+  const updatedProviders = {
+    ...conf.providers,
+    [providerId]: {
+      ...prov,
+      apiKey: '',
+    },
+  };
+
+  const updatedConfig = saveConfig({
+    providers: updatedProviders,
+  });
+
+  return updatedConfig;
+}
+
+export interface ConfiguredProviderInfo {
+  id: string;
+  name: string;
+  isConfigured: boolean;
+  apiKey?: string;
+  maskedKey: string;
+  defaultModel?: string;
+  requiresApiKey: boolean;
+  is1MSupported: boolean;
+}
+
+export function getAvailableConfiguredProviders(config?: QingmeiConfig): ConfiguredProviderInfo[] {
+  const conf = config || loadConfig();
+  return SUPPORTED_PROVIDERS.map((pDef) => {
+    const provConf = conf.providers[pDef.id];
+    const hasKey = Boolean(provConf?.apiKey && provConf.apiKey.trim().length > 0);
+    const isConfigured = hasKey || !pDef.requiresApiKey;
+    const apiKey = provConf?.apiKey;
+    const defaultModel = provConf?.defaultModel || DEFAULT_PRESET_CONFIG.providers[pDef.id]?.defaultModel || '';
+
+    return {
+      id: pDef.id,
+      name: pDef.name,
+      isConfigured,
+      apiKey,
+      maskedKey: maskApiKey(apiKey),
+      defaultModel,
+      requiresApiKey: pDef.requiresApiKey,
+      is1MSupported: Boolean(pDef.is1MSupported),
+    };
+  });
+}
+
 
 

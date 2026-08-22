@@ -36,6 +36,16 @@
     - *标准模式 (1~4 个会话)*：`[#1 (running)] [#2]* [#3] | ~/path`
     - *紧凑模式 (4~6 个会话)*：`[#1 (running)] [#2] [#3] [#4]* [#5] | ~/path`
     - *超宽折叠聚合模式 (>6 个会话或窄屏)*：`#5* [running] (8 sessions: 2 running, 6 ready) | ~/path`
+- **API Key 动态管理与智能降级 (`/key` 与 `/model`)**：
+  - 独立 `/key` 密钥管理中心：支持查看所有已支持厂商的脱敏 Key（如 `sk-****3f9a`）、轻量连通性探活与错误诊断排查建议。
+  - 参数化快速更新（`/key deepseek sk-xxxx`）与一键删除解绑（`/key rm deepseek`）。
+  - **运行时客户端热重载**：修改当前活动厂商的 Key 时，即刻热重载 `LLMClient`，无需重启进程，且 100% 保持会话上下文与历史记忆。
+  - **`/model` 流程就地管理**：在选择已配置厂商时，支持直接选择模型、修改 Key 或删除 Key。
+  - **删除 Key 智能降级**：删除当前活动厂商的 Key 时，自动探测并引导平滑切换至其他已配置厂商模型。
+- **扩展 Google Gemini 预设模型库**：
+  - 完整预设并支持 `gemini-3.5-flash`、`gemini-3.5-flash-lite`、`gemini-3.6-flash`、`gemini-3.7-flash` 与 `gemini-3.1-pro-preview`（全量 1M+ 上下文）。
+- **新增 OpenAI GPT-5.x 官方预设模型**：
+  - 正式开放 OpenAI 厂商，预设 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.5`（全量 1M 上下文、支持推理与工具）与 `gpt-5.4-mini`（1M 上下文、支持工具）。
 - **退出拦截守卫 (Exit Guard)**：
   - 输入 `/quit` 或 `/exit` 时，若检测到后台仍有 `[running]` 或 `[waiting]` 状态的会话，主动弹出居中警告模态框，防止误关闭未完成任务。
 

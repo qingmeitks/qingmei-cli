@@ -38,6 +38,11 @@ import {
   handleQuitWithRunningGuard,
   applySwitchedSessionToTui,
 } from './commands/session.js';
+import {
+  handleKeyCommand,
+  handleUpdateKeyFlow,
+  handleRemoveKeyFlow,
+} from './commands/key.js';
 
 export function clearTerminal(): void {
   process.stdout.write('\x1b[0 q\x1b[2J\x1b[3J\x1b[H\x1b[?25h');
@@ -346,6 +351,7 @@ async function handleSlashCommand(
         `  ${chalk.cyan('/export [id]')}     - Export session to Markdown report`,
         `  ${chalk.cyan('/mode [mode]')}      - Switch mode: interactive, auto, readonly, chat`,
         `  ${chalk.cyan('/model [name]')}     - Switch AI model & provider`,
+        `  ${chalk.cyan('/key [provider]')}   - Manage AI provider API keys (view, update, remove)`,
         `  ${chalk.cyan('/effort [level]')}   - Set reasoning effort: off, low, medium, high`,
         `  ${chalk.cyan('/skills')}           - View and toggle active skills`,
         `  ${chalk.cyan('/mcp')}              - Check MCP server connections and tools`,
@@ -531,6 +537,12 @@ async function handleSlashCommand(
       break;
     }
 
+    case 'key':
+    case 'apikey': {
+      await handleKeyCommand(arg, agent, tuiPrompt);
+      break;
+    }
+
     case 'model': {
       if (arg) {
         const config = loadConfig();
@@ -573,24 +585,44 @@ async function handleSlashCommand(
         let apiKey = provConf.apiKey;
 
         if (pDef?.requiresApiKey && !apiKey) {
-          const keyInput = await tuiPrompt.textModal({
-            title: `Enter API Key for ${pDef.name}`,
-            isPassword: true,
+          await handleUpdateKeyFlow(selectedProvider, undefined, agent, tuiPrompt);
+          break;
+        } else if (pDef?.requiresApiKey && apiKey) {
+          // Provider is already configured: offer Select Model, Update Key, or Remove Key
+          const providerAction = await tuiPrompt.selectModal({
+            title: `Provider: ${pDef.name}`,
+            options: [
+              {
+                value: 'select_model',
+                label: `[ Select Model ]`,
+                hint: `Choose model for ${pDef.name}`,
+              },
+              {
+                value: 'update_key',
+                label: `Update API Key`,
+                hint: `Modify key for ${pDef.name}`,
+              },
+              {
+                value: 'remove_key',
+                label: chalk.redBright(`Remove API Key`),
+                hint: `Unbind key for ${pDef.name}`,
+              },
+            ],
+            initialValue: 'select_model',
           });
 
-          if (!keyInput) {
+          if (!providerAction) {
             break;
           }
 
-          apiKey = keyInput.trim();
-          saveConfig({
-            providers: {
-              [selectedProvider]: {
-                apiKey,
-                baseUrl: pDef.defaultBaseUrl,
-              },
-            },
-          });
+          if (providerAction === 'update_key') {
+            await handleUpdateKeyFlow(selectedProvider, undefined, agent, tuiPrompt);
+            break;
+          } else if (providerAction === 'remove_key') {
+            await handleRemoveKeyFlow(selectedProvider, agent, tuiPrompt);
+            break;
+          }
+          // If 'select_model', proceed to Step 2
         }
 
         // Step 2: Select Model

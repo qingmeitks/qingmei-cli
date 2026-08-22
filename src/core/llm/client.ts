@@ -173,7 +173,14 @@ export function parseModelMetadataFromId(
       lower.includes('long') ||
       lower.includes('gemini') ||
       lower.includes('kimi') ||
-      lower.includes('moonshot')
+      lower.includes('moonshot') ||
+      lower.includes('deepseek-v4') ||
+      lower.includes('deepseek-r2') ||
+      (lower.includes('deepseek') && (lower.includes('v4') || lower.includes('1m'))) ||
+      lower.includes('gpt-5') ||
+      lower.includes('sol') ||
+      lower.includes('terra') ||
+      lower.includes('luna')
     ) {
       contextWindow = 1000000;
       hasExplicitContext = true;
@@ -197,7 +204,12 @@ export function parseModelMetadataFromId(
     lower.includes('o3') ||
     lower.includes('o4') ||
     lower.includes('flash') ||
-    lower.includes('zero');
+    lower.includes('zero') ||
+    lower.includes('sol') ||
+    lower.includes('terra') ||
+    lower.includes('luna') ||
+    lower.includes('gpt-5.5') ||
+    lower.includes('gpt-5.6');
 
   return {
     id,
@@ -444,7 +456,7 @@ export class LLMClient {
         ? 'grok-2'
         : this.config.provider === 'glm'
         ? 'glm-4-plus'
-        : 'gpt-4o');
+        : 'gpt-5.6-sol');
 
     try {
       await this.client.chat.completions.create({
@@ -563,15 +575,103 @@ export class LLMClient {
       const isAuthOrNetworkError =
         errorMsg.includes('401') ||
         errorMsg.includes('403') ||
+        errorMsg.includes('400') ||
+        errorMsg.includes('API_KEY_INVALID') ||
+        errorMsg.includes('API key not valid') ||
+        errorMsg.includes('invalid_api_key') ||
+        errorMsg.includes('Incorrect API key') ||
         errorMsg.includes('Unauthorized') ||
+        errorMsg.includes('Forbidden') ||
         errorMsg.includes('ECONNREFUSED') ||
-        errorMsg.includes('ENOTFOUND');
+        errorMsg.includes('ENOTFOUND') ||
+        errorMsg.includes('ETIMEDOUT') ||
+        errorMsg.includes('fetch failed');
 
       return {
         probeOk: !isAuthOrNetworkError,
         latencyMs: Date.now() - start,
         models: [],
         error: isAuthOrNetworkError ? errorMsg : undefined,
+      };
+    }
+  }
+
+  /**
+   * Fast verification probe for a specific provider and API key
+   */
+  static async verifyApiKey(
+    provider: string,
+    apiKey: string,
+    baseUrl?: string,
+    modelId?: string
+  ): Promise<{ success: boolean; latencyMs: number; error?: string }> {
+    if (!apiKey || apiKey.trim().length === 0) {
+      return {
+        success: false,
+        latencyMs: 0,
+        error: 'API Key is empty.',
+      };
+    }
+
+    const start = Date.now();
+    const cleanKey = apiKey.trim();
+    const effectiveBaseUrl = baseUrl || 'https://api.openai.com/v1';
+    const effectiveModel = modelId && modelId !== 'dummy' ? modelId : 'deepseek-chat';
+
+    const probeClient = new LLMClient({
+      apiKey: cleanKey,
+      baseUrl: effectiveBaseUrl,
+      defaultModel: effectiveModel,
+      provider,
+    });
+
+    // 1. Try listing remote models via /v1/models endpoint
+    try {
+      const models = await probeClient.listRemoteModels();
+      if (models && models.length > 0) {
+        return { success: true, latencyMs: Date.now() - start };
+      }
+    } catch {
+      // If endpoint doesn't support models.list, continue to chat probe
+    }
+
+    // 2. Chat completion probe with 1 token
+    try {
+      await probeClient.client.chat.completions.create(
+        {
+          model: effectiveModel,
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 1,
+        },
+        { timeout: 8000 }
+      );
+      return { success: true, latencyMs: Date.now() - start };
+    } catch (err: any) {
+      const errMsg = err?.message || String(err);
+
+      // Distinguish model not found (where API key is valid) from auth/quota/network failures
+      const isModelOnlyError =
+        (errMsg.includes('does not exist') ||
+          errMsg.includes('not found') ||
+          errMsg.includes('Model not found') ||
+          errMsg.includes('model_not_found') ||
+          errMsg.includes('404')) &&
+        !errMsg.includes('API_KEY_INVALID') &&
+        !errMsg.includes('API key not valid') &&
+        !errMsg.includes('401') &&
+        !errMsg.includes('403') &&
+        !errMsg.includes('400') &&
+        !errMsg.includes('Unauthorized') &&
+        !errMsg.includes('Forbidden');
+
+      if (isModelOnlyError) {
+        return { success: true, latencyMs: Date.now() - start };
+      }
+
+      return {
+        success: false,
+        latencyMs: Date.now() - start,
+        error: errMsg,
       };
     }
   }
