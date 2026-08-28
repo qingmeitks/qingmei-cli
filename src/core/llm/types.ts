@@ -38,17 +38,27 @@ export interface LLMOptions {
 }
 
 
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cachedTokens: number;
+  cacheHitRate: number; // 0.0 ~ 100.0 (percentage)
+  reasoningTokens?: number;
+}
+
 export type StreamEvent =
   | { type: 'reasoning'; delta: string }
   | { type: 'text'; delta: string }
   | { type: 'tool_call_start'; index: number; id: string; name: string }
   | { type: 'tool_call_delta'; index: number; argumentsDelta: string }
   | { type: 'tool_call_done'; index: number; toolCall: ToolCall }
-  | { type: 'done'; fullContent: string; fullReasoning?: string; toolCalls?: ToolCall[] }
+  | { type: 'done'; fullContent: string; fullReasoning?: string; toolCalls?: ToolCall[]; usage?: TokenUsage }
   | { type: 'error'; error: Error };
 
 export interface LLMResponse {
   content: string;
   reasoningContent?: string;
   toolCalls?: ToolCall[];
+  usage?: TokenUsage;
 }

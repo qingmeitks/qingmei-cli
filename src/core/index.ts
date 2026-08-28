@@ -4,3 +4,4 @@ export * from './session.js';
 export * from './security.js';
 export * from './dispatcher.js';
 export * from './llm/index.js';
+export * from './stats/index.js';

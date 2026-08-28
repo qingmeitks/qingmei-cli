@@ -13,6 +13,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.2] - Unreleased
+
+### Added
+- **LLM Prompt Cache Hit Rate & Token Usage Tracker (`/usage` & `/stats`)**:
+  - Integrated real-time server-side KV Cache / Prompt Cache metrics collection across major providers (OpenAI `prompt_tokens_details.cached_tokens`, DeepSeek `prompt_cache_hit_tokens`, Anthropic / Gemini).
+  - Low-intrusion per-turn text metrics displayed beneath assistant replies (e.g. `[1.4s | in: 1,200 (cached: 1,000, 83.3%) | out: 300]`).
+  - `/usage`: Dedicated command to view session token consumption, cache hit rate percentage, and savings breakdown.
+  - `/stats`: Comprehensive session activity diagnostics, interaction duration, turns, and tool invocation success/failure matrix.
+- **Redesigned Multi-Line Exit Summary UI**:
+  - Replaced single-line termination output with a structured multi-line card featuring the cyan `QINGMEI` block wordmark logo, version badge, and aligned field statistics (`Duration:`, `Turns:`, `Input:`, `Output:`, `Total:`).
+  - Zero-emoji, pure text design with automatic silence on empty (0 request) sessions.
+- **Official Model Presets for GLM, Grok, and Qwen**:
+  - **GLM / Zhipu AI (`glm`)**: Added presets for `GLM-5.3-Flash` (default, tools + reasoning), `GLM-5.3`, and `GLM-5.2` (all 1M context).
+  - **Grok / xAI (`grok`)**: Added presets for `grok-4.6` (default, tools + reasoning), `grok-4.5` (tools + reasoning), and `grok-4.3` (all 1M context).
+  - **Qwen / DashScope (`qwen`)**: Added presets for `qwen3.8-max` (default, tools + reasoning), `qwen3.8-flash` (tools + reasoning), `qwen3.7-plus`, and `qwen3.7-flash` (all 1M context).
+
+---
+
 ## [0.1.1] - 2026-08-28
 
 ### Added

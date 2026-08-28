@@ -37,6 +37,13 @@
   - **DeepSeek**: Pre-configured with `deepseek-v4-flash` (1M context, tools + reasoning) and `deepseek-v4-pro` (1M context, tools).
   - **Google Gemini**: Pre-configured with `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-3.7-flash` (1M context, tools + reasoning), and `gemini-3.1-pro-preview` (1M context).
   - **OpenAI**: Pre-configured with `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5` (1M context, tools + reasoning), and `gpt-5.4-mini` (1M context, tools).
+  - **GLM / Zhipu AI**: Pre-configured with `GLM-5.3-Flash` (1M context, tools + reasoning), `GLM-5.3`, and `GLM-5.2` (1M context).
+  - **Grok / xAI**: Pre-configured with `grok-4.6` (1M context, tools + reasoning), `grok-4.5` (1M context, tools + reasoning), and `grok-4.3` (1M context).
+  - **Qwen / DashScope**: Pre-configured with `qwen3.8-max` (1M context, tools + reasoning), `qwen3.8-flash` (1M context, tools + reasoning), `qwen3.7-plus`, and `qwen3.7-flash` (1M context).
+- **Prompt Cache Hit Rate & Token Usage Tracker (v0.1.2)**:
+  - Automatically captures server-side KV Cache / Prompt Cache metrics per request and outputs low-intrusion stats beneath replies (e.g. `[1.4s | in: 1,200 (cached: 1,000, 83.3%) | out: 300]`).
+  - Dedicated `/usage` (token billing and cache savings) and `/stats` (session diagnostics and tool execution matrix) commands.
+  - Redesigned exit summary card with cyan `QINGMEI` block wordmark and clean multi-line resource breakdown.
 - **Model Context Protocol (MCP)**: Native support for MCP Tools, Resources, and Prompts over `stdio` process sandboxes and remote `sse` transports, with automatic namespace isolation (`mcp__<server>__<tool>`).
 - **Skill Extension Engine**: Standard `SKILL.md` parser and global skill registry in `~/.qingmei/skills/` with hot-pluggable injection.
 - **Layered Instruction Rules**:
@@ -77,7 +84,7 @@ npm run build
 npm link
 ```
 
-> **First-Time Setup**: If unconfigured, Qingmei automatically triggers the interactive setup wizard to guide you through selecting a provider (DeepSeek / Gemini), entering an API key, testing connectivity, and choosing a pre-configured model.
+> **First-Time Setup**: If unconfigured, Qingmei automatically triggers the interactive setup wizard to guide you through selecting a provider (DeepSeek / Gemini / GLM / Grok / Qwen), entering an API key, testing connectivity, and choosing a pre-configured model.
 
 ---
 
@@ -105,6 +112,8 @@ Within the `qingmei` interactive prompt, type `/` to view suggestions with `Tab`
 | **`/trust [path]`** | Trust current workspace (enables mutating tools) | `/trust` |
 | **`/untrust [path]`** | Untrust workspace and switch to restricted read-only mode | `/untrust` |
 | **`/compact`** | Compact and optimize context memory | `/compact` |
+| **`/usage`** | Inspect Token consumption and server-side Prompt Cache hit rate | `/usage` |
+| **`/stats`** | Show session activity diagnostics, turns, and tool metrics | `/stats` |
 | **`/clear`** | Clear screen viewport (retains session memory) | `/clear` |
 | **`/config`** | Show current configuration (`/config edit` to edit in editor) | `/config` |
 | **`/help`** | Show help message | `/help` |

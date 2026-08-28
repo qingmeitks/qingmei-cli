@@ -263,10 +263,26 @@ describe('Config Loader & Model Metadata', () => {
 
     const anthropicModels = getProviderModels('anthropic', DEFAULT_PRESET_CONFIG);
     expect(anthropicModels).toEqual([]);
+
     const grokModels = getProviderModels('grok', DEFAULT_PRESET_CONFIG);
-    expect(grokModels).toEqual([]);
+    expect(grokModels.map((m) => m.id)).toEqual(['grok-4.6', 'grok-4.5', 'grok-4.3']);
+    expect(grokModels[0].is1MContext).toBe(true);
+
     const glmModels = getProviderModels('glm', DEFAULT_PRESET_CONFIG);
-    expect(glmModels).toEqual([]);
+    expect(glmModels.map((m) => m.id)).toEqual(['GLM-5.3-Flash', 'GLM-5.3', 'GLM-5.2']);
+    expect(glmModels[0].is1MContext).toBe(true);
+
+    const qwenModels = getProviderModels('qwen', DEFAULT_PRESET_CONFIG);
+    expect(qwenModels.map((m) => m.id)).toEqual([
+      'qwen3.8-max',
+      'qwen3.8-flash',
+      'qwen3.7-plus',
+      'qwen3.7-flash',
+    ]);
+    expect(qwenModels[0].is1MContext).toBe(true);
+    expect(qwenModels[1].is1MContext).toBe(true);
+    expect(qwenModels[2].is1MContext).toBe(true);
+    expect(qwenModels[3].is1MContext).toBe(true);
   });
 
   it('should export ensureQingmeiEnvironment function', () => {

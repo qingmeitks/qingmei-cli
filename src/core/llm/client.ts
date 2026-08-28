@@ -6,9 +6,52 @@ import {
   StreamEvent,
   LLMResponse,
   ToolCall,
+  TokenUsage,
 } from './types.js';
 import { ModelMetadata } from '../../config/types.js';
 import { DEFAULT_PRESET_CONFIG } from '../../config/defaults.js';
+
+export function extractTokenUsage(rawUsage: any): TokenUsage {
+  if (!rawUsage) {
+    return {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      cachedTokens: 0,
+      cacheHitRate: 0,
+    };
+  }
+
+  const promptTokens = Number(rawUsage.prompt_tokens ?? rawUsage.input_tokens ?? 0);
+  const completionTokens = Number(rawUsage.completion_tokens ?? rawUsage.output_tokens ?? 0);
+  const totalTokens = Number(rawUsage.total_tokens ?? (promptTokens + completionTokens));
+
+  const cachedTokens = Number(
+    rawUsage.prompt_tokens_details?.cached_tokens ??
+    rawUsage.prompt_cache_hit_tokens ??
+    rawUsage.cache_read_input_tokens ??
+    rawUsage.cachedContentTokenCount ??
+    0
+  );
+
+  const reasoningTokens =
+    rawUsage.completion_tokens_details?.reasoning_tokens !== undefined
+      ? Number(rawUsage.completion_tokens_details.reasoning_tokens)
+      : rawUsage.reasoning_tokens !== undefined
+      ? Number(rawUsage.reasoning_tokens)
+      : undefined;
+
+  const cacheHitRate = promptTokens > 0 ? (cachedTokens / promptTokens) * 100 : 0;
+
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    cachedTokens,
+    cacheHitRate: Math.round(cacheHitRate * 10) / 10,
+    reasoningTokens,
+  };
+}
 
 export interface LLMClientConfig {
   apiKey: string;
@@ -181,7 +224,11 @@ export function parseModelMetadataFromId(
       lower.includes('gpt-5') ||
       lower.includes('sol') ||
       lower.includes('terra') ||
-      lower.includes('luna')
+      lower.includes('luna') ||
+      lower.includes('glm-5') ||
+      lower.includes('grok-4') ||
+      lower.includes('qwen') ||
+      lower.includes('qwen3')
     ) {
       contextWindow = 1000000;
       hasExplicitContext = true;
@@ -312,6 +359,7 @@ export class LLMClient {
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens,
       stream: true,
+      stream_options: { include_usage: true },
     };
 
     if (options.thinkingEffort) {
@@ -339,14 +387,17 @@ export class LLMClient {
       options.signal ? { signal: options.signal } : undefined
     );
 
-
-
     let fullContent = '';
     let fullReasoning = '';
+    let lastRawUsage: any = undefined;
     const toolCallsMap = new Map<number, { id: string; name: string; arguments: string }>();
 
     for await (const chunk of stream) {
-      const choice = chunk.choices[0];
+      if ((chunk as any)?.usage) {
+        lastRawUsage = (chunk as any).usage;
+      }
+
+      const choice = chunk.choices?.[0];
       if (!choice) continue;
 
       const delta = choice.delta as any;
@@ -409,17 +460,21 @@ export class LLMClient {
       },
     }));
 
+    const finalUsage = lastRawUsage ? extractTokenUsage(lastRawUsage) : undefined;
+
     yield {
       type: 'done',
       fullContent,
       fullReasoning: fullReasoning || undefined,
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      usage: finalUsage,
     };
 
     return {
       content: fullContent,
       reasoningContent: fullReasoning || undefined,
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      usage: finalUsage,
     };
   }
 
@@ -429,6 +484,7 @@ export class LLMClient {
   async chat(messages: ChatMessage[], options: LLMOptions = {}): Promise<LLMResponse> {
     let fullContent = '';
     let fullReasoning = '';
+    let usage: TokenUsage | undefined;
     const toolCalls: ToolCall[] = [];
 
     for await (const event of this.chatStream(messages, options)) {
@@ -438,6 +494,8 @@ export class LLMClient {
         fullReasoning += event.delta;
       } else if (event.type === 'tool_call_done') {
         toolCalls.push(event.toolCall);
+      } else if (event.type === 'done') {
+        usage = event.usage;
       }
     }
 
@@ -445,6 +503,7 @@ export class LLMClient {
       content: fullContent,
       reasoningContent: fullReasoning || undefined,
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      usage,
     };
   }
 
@@ -463,9 +522,11 @@ export class LLMClient {
         : this.config.provider === 'anthropic'
         ? 'claude-3-7-sonnet-latest'
         : this.config.provider === 'grok'
-        ? 'grok-2'
+        ? 'grok-4.6'
         : this.config.provider === 'glm'
-        ? 'glm-4-plus'
+        ? 'GLM-5.3-Flash'
+        : this.config.provider === 'qwen'
+        ? 'qwen3.8-max'
         : 'gpt-5.6-sol');
 
     try {

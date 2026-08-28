@@ -1,4 +1,5 @@
 import { ChatMessage, ToolCall } from '../llm/types.js';
+import { TurnStats } from '../stats/types.js';
 
 export type SessionStatus = 'ready' | 'running' | 'waiting_confirm' | 'done' | 'error';
 
@@ -23,4 +24,5 @@ export interface SessionInstanceCallbacks {
   onStatusChange?: (status: SessionStatus, detail?: string) => void;
   onCompleted?: (finalReply: string) => void;
   onError?: (error: Error) => void;
+  onTurnCompleted?: (stats: TurnStats) => void;
 }

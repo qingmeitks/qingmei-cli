@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { SecurityMode, ModelMetadata, ThinkingEffort } from '../../config/types.js';
-import { theme } from './theme.js';
+import { theme, APP_VERSION, QINGMEI_LOGO_LINES } from './theme.js';
 
 export interface SlashCommandInfo {
   command: string;
@@ -31,6 +31,8 @@ export const SLASH_COMMANDS: SlashCommandInfo[] = [
   { command: '/trust', description: 'Trust current workspace to enable full tools' },
   { command: '/untrust', description: 'Untrust current workspace (restricted mode)' },
   { command: '/compact', description: 'Compact and optimize context memory' },
+  { command: '/usage', description: 'Show Token consumption and cache hit rate metrics' },
+  { command: '/stats', description: 'Show session activity diagnostics and tool statistics' },
   { command: '/session', description: 'Session commands (new, switch, list, save, resume, delete, export)' },
   { command: '/clear', description: 'Clear screen viewport (retains session memory)' },
   { command: '/config', description: 'Show current configuration' },
@@ -737,8 +739,8 @@ export class TuiPrompt {
 
     // Top Section: Title & Subtitle
     const topLines: string[] = [
-      formatRow(chalk.bold.cyanBright('█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █') + '   ' + chalk.bold.whiteBright('v0.1.1')),
-      formatRow(chalk.bold.cyanBright('▀▀█ █ █ ▀█ █▄█ █ ▀ █ ██▄ █') + '   ' + chalk.dim('Type your request, @file, !cmd, or slash commands (e.g. /help, /mode, /model, /exit)')),
+      formatRow(chalk.bold.cyanBright(QINGMEI_LOGO_LINES[0]) + '   ' + chalk.bold.whiteBright(APP_VERSION)),
+      formatRow(chalk.bold.cyanBright(QINGMEI_LOGO_LINES[1]) + '   ' + chalk.dim('Type your request, @file, !cmd, or slash commands (e.g. /help, /mode, /model, /exit)')),
       formatRow(''),
     ];
 

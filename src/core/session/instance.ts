@@ -1,11 +1,12 @@
 import { SessionManager } from '../session.js';
-import { ChatMessage, ToolCall } from '../llm/types.js';
+import { ChatMessage, ToolCall, TokenUsage } from '../llm/types.js';
 import { LLMClient } from '../llm/client.js';
 import { ToolDispatcher } from '../dispatcher.js';
 import { ContextManager } from '../context.js';
 import { ModelMetadata, SecurityMode, ThinkingEffort } from '../../config/types.js';
 import { ToolExecutionContext } from '../../tools/types.js';
 import { SessionStatus, SessionSummary, SessionInstanceCallbacks } from './types.js';
+import { SessionTracker } from '../stats/tracker.js';
 
 export interface SessionInstanceConfig {
   id?: string;
@@ -19,6 +20,7 @@ export interface SessionInstanceConfig {
   activeModel: ModelMetadata;
   dispatcher: ToolDispatcher;
   contextManager: ContextManager;
+  tracker?: SessionTracker;
   initialMessages?: ChatMessage[];
   createdAt?: number;
   updatedAt?: number;
@@ -31,6 +33,7 @@ export class SessionInstance {
   public status: SessionStatus = 'ready';
   public currentAction?: string;
   public sessionManager: SessionManager;
+  public tracker: SessionTracker;
   public historyLines: string[] = [];
   public draftInput: string = '';
   public workingDirectory: string;
@@ -59,6 +62,7 @@ export class SessionInstance {
     this.activeModel = config.activeModel;
     this.dispatcher = config.dispatcher;
     this.contextManager = config.contextManager;
+    this.tracker = config.tracker || new SessionTracker();
 
     this.sessionManager = new SessionManager();
     if (config.id) {
@@ -124,6 +128,13 @@ export class SessionInstance {
     });
     this.updatedAt = Date.now();
 
+    const turnStartTime = Date.now();
+    let turnPromptTokens = 0;
+    let turnCompletionTokens = 0;
+    let turnCachedTokens = 0;
+    let turnReasoningTokens = 0;
+    let hasTurnUsage = false;
+
     const executionPromise = (async () => {
       let currentStep = 0;
       let finalAssistantReply = '';
@@ -174,6 +185,15 @@ export class SessionInstance {
               currentContent = event.fullContent;
               currentReasoning = event.fullReasoning || '';
               currentToolCalls = event.toolCalls;
+              if (event.usage) {
+                hasTurnUsage = true;
+                turnPromptTokens += event.usage.promptTokens;
+                turnCompletionTokens += event.usage.completionTokens;
+                turnCachedTokens += event.usage.cachedTokens;
+                if (event.usage.reasoningTokens) {
+                  turnReasoningTokens += event.usage.reasoningTokens;
+                }
+              }
             }
           }
 
@@ -227,6 +247,12 @@ export class SessionInstance {
               executionContext
             );
 
+            this.tracker.recordToolCall(
+              toolName,
+              dispatchResult.durationMs,
+              dispatchResult.result.success
+            );
+
             callbacks.onToolCallResult?.(
               toolName,
               dispatchResult.result.output,
@@ -250,12 +276,54 @@ export class SessionInstance {
         const usage = this.contextManager.getContextUsage(this.sessionManager.messages);
         this.sessionManager.save(this.workingDirectory, usage.usedTokens, this.name);
 
+        const turnDurationMs = Date.now() - turnStartTime;
+        const finalTurnUsage: TokenUsage | undefined = hasTurnUsage
+          ? {
+              promptTokens: turnPromptTokens,
+              completionTokens: turnCompletionTokens,
+              totalTokens: turnPromptTokens + turnCompletionTokens,
+              cachedTokens: turnCachedTokens,
+              cacheHitRate:
+                turnPromptTokens > 0
+                  ? Math.round((turnCachedTokens / turnPromptTokens) * 1000) / 10
+                  : 0,
+              reasoningTokens: turnReasoningTokens > 0 ? turnReasoningTokens : undefined,
+            }
+          : undefined;
+
+        this.tracker.recordTurn(finalTurnUsage, turnDurationMs);
+        callbacks.onTurnCompleted?.({
+          durationMs: turnDurationMs,
+          usage: finalTurnUsage,
+        });
+
         this.setStatus('done');
         callbacks.onStatusChange?.('done');
         callbacks.onCompleted?.(finalAssistantReply);
 
         return finalAssistantReply;
       } catch (err: any) {
+        const turnDurationMs = Date.now() - turnStartTime;
+        const finalTurnUsage: TokenUsage | undefined = hasTurnUsage
+          ? {
+              promptTokens: turnPromptTokens,
+              completionTokens: turnCompletionTokens,
+              totalTokens: turnPromptTokens + turnCompletionTokens,
+              cachedTokens: turnCachedTokens,
+              cacheHitRate:
+                turnPromptTokens > 0
+                  ? Math.round((turnCachedTokens / turnPromptTokens) * 1000) / 10
+                  : 0,
+              reasoningTokens: turnReasoningTokens > 0 ? turnReasoningTokens : undefined,
+            }
+          : undefined;
+
+        this.tracker.recordTurn(finalTurnUsage, turnDurationMs);
+        callbacks.onTurnCompleted?.({
+          durationMs: turnDurationMs,
+          usage: finalTurnUsage,
+        });
+
         const isCancelled = signal.aborted || err.name === 'AbortError' || err.message?.includes('cancelled') || err.message?.includes('aborted');
         if (isCancelled) {
           const assistantText = currentContent

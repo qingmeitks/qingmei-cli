@@ -20,6 +20,8 @@ import { MCPManager } from '../mcp/manager.js';
 import { SecurityMode, ModelMetadata, ThinkingEffort, CompactionConfig } from '../config/types.js';
 import { ToolExecutionContext } from '../tools/types.js';
 import { getModelMetadata } from '../config/loader.js';
+import { SessionTracker } from './stats/tracker.js';
+import { TurnStats } from './stats/types.js';
 
 export interface AgentCallbacks {
   onReasoningChunk?: (delta: string) => void;
@@ -27,6 +29,7 @@ export interface AgentCallbacks {
   onToolCallStart?: (name: string, id: string) => void;
   onToolCallResult?: (name: string, result: string, durationMs: number, success: boolean) => void;
   onConfirm?: (description: string) => Promise<boolean>;
+  onTurnCompleted?: (stats: TurnStats) => void;
 }
 
 export interface AgentConfig {
@@ -95,6 +98,10 @@ export class QingmeiAgent {
 
   get contextManager(): ContextManager {
     return this.pool.activeSession.contextManager;
+  }
+
+  get tracker(): SessionTracker {
+    return this.pool.activeSession.tracker;
   }
 
   setWorkspaceTrusted(trusted: boolean): void {
@@ -171,6 +178,7 @@ export class QingmeiAgent {
       onToolCallStart: callbacks.onToolCallStart,
       onToolCallResult: callbacks.onToolCallResult,
       onConfirm: callbacks.onConfirm,
+      onTurnCompleted: callbacks.onTurnCompleted,
     });
   }
 }

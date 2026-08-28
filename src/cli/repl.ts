@@ -44,6 +44,8 @@ import {
   handleUpdateKeyFlow,
   handleRemoveKeyFlow,
 } from './commands/key.js';
+import { formatTurnSummary, formatExitSummary } from '../core/stats/tracker.js';
+import { handleUsageCommand, handleStatsCommand } from './commands/stats.js';
 
 export function clearTerminal(): void {
   process.stdout.write('\x1b[0 q\x1b[2J\x1b[3J\x1b[H\x1b[?25h');
@@ -237,6 +239,11 @@ export async function startRepl(): Promise<void> {
         if (handled === 'exit') {
           await mcpManager.disconnectAll();
           process.stdout.write('\x1b[2J\x1b[3J\x1b[H\x1b[?25h');
+          const exitSummary = formatExitSummary(agent.tracker.getActivitySummary());
+          if (exitSummary && process.stdout.isTTY) {
+            console.log(chalk.dim(exitSummary));
+            console.log('');
+          }
           process.exit(0);
         }
       } catch (err: any) {
@@ -334,13 +341,19 @@ export async function startRepl(): Promise<void> {
         if (finalOutput) {
           tuiPrompt.addHistory(finalOutput);
         }
-        tuiPrompt.addHistory(chalk.yellow('⏹ Generation stopped by user.'));
+        tuiPrompt.addHistory(chalk.yellow('Generation stopped by user.'));
         tuiPrompt.addHistory('');
       } else if (finalOutput) {
         tuiPrompt.addHistory(finalOutput);
         tuiPrompt.addHistory('');
       } else if (currentReasoning.trim()) {
         tuiPrompt.addHistory(chalk.gray(currentReasoning.trim()));
+        tuiPrompt.addHistory('');
+      }
+
+      const lastTurn = agent.tracker.getLastTurn();
+      if (lastTurn) {
+        tuiPrompt.addHistory(chalk.dim(formatTurnSummary(lastTurn)));
         tuiPrompt.addHistory('');
       }
 
@@ -399,6 +412,8 @@ async function handleSlashCommand(
         `  ${chalk.cyan('/trust [path]')}     - Trust current workspace (enable full tools)`,
         `  ${chalk.cyan('/untrust [path]')}   - Untrust workspace (switch to restricted mode)`,
         `  ${chalk.cyan('/compact')}          - Compact and optimize context memory`,
+        `  ${chalk.cyan('/usage')}            - Show Token consumption and cache hit rate metrics`,
+        `  ${chalk.cyan('/stats')}            - Show session activity diagnostics and tool statistics`,
         `  ${chalk.cyan('/clear')}            - Clear screen viewport (retains session memory)`,
         `  ${chalk.cyan('/config')}           - Show current configuration`,
         `  ${chalk.cyan('/help')}             - Show this help message`,
@@ -866,14 +881,24 @@ async function handleSlashCommand(
       );
       if (result.summarizedMessagesCount > 0 || result.foldedToolOutputsCount > 0) {
         tuiPrompt.addHistory(
-          chalk.green(`⚡ Context compacted: saved ~${result.savedTokens} tokens (${result.summarizedMessagesCount} messages summarized, ${result.foldedToolOutputsCount} tool outputs folded).`)
+          chalk.green(`Context compacted: saved ~${result.savedTokens} tokens (${result.summarizedMessagesCount} messages summarized, ${result.foldedToolOutputsCount} tool outputs folded).`)
         );
       } else {
         tuiPrompt.addHistory(
-          chalk.cyan(`✓ Context is already compact and optimized (Usage: ${currentUsage.display}).`)
+          chalk.cyan(`Context is already compact and optimized (Usage: ${currentUsage.display}).`)
         );
       }
       tuiPrompt.addHistory('');
+      break;
+    }
+
+    case 'usage': {
+      await handleUsageCommand(arg, agent, tuiPrompt);
+      break;
+    }
+
+    case 'stats': {
+      await handleStatsCommand(arg, agent, tuiPrompt);
       break;
     }
 

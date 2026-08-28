@@ -194,4 +194,40 @@
 - **测试环境临时目录隔离**：通过 `process.env.QINGMEI_CONFIG_PATH` 将单元测试隔离于系统临时沙箱目录（`os.tmpdir()`），确保 `npm test` 绝不污染用户真实配置文件 `~/.qingmei/config.json`。
 - **配置持久化即时同步**：通过 `/key` 交互录入或更新的 API Key 即时同步至 `process.env`，确保运行时即刻生效且磁盘文件永久保存。
 
+---
+
+## 6. Prompt Cache 命中率、Token 统计与模型预设演进架构 (v0.1.2)
+
+### 6.1 Token 消耗与 Prompt Cache 命中率统计体系 (`SessionTracker`)
+- **服务端 KV Cache / Prompt Cache 采集**：
+  - 自动向流式请求注入 `stream_options: { include_usage: true }`；
+  - `extractTokenUsage` 统一解析各家 Provider 的缓存字段（OpenAI `prompt_tokens_details.cached_tokens`、DeepSeek `prompt_cache_hit_tokens` 等）；
+  - 健壮性保障：对除以 0、空响应进行零值保护，避免 `NaN`。
+- **单轮生成后低侵入式输出**：
+  - 命中缓存：`[1.4s | in: 1,200 (cached: 1,000, 83.3%) | out: 300]`
+  - 包含思考：`[2.8s | in: 1,820 (cached: 1,400, 76.9%) | out: 450 (reasoning: 320)]`
+  - 未命中缓存：`[950ms | in: 400 | out: 120]`
+- **专属分析指令**：
+  - **`/usage`**：展示当前会话详细 Token 账单结构、缓存命中利用率与节省统计；
+  - **`/stats`**：展示会话全景活动诊断（交互时长、轮次、工具调用成功率矩阵与 Token 汇总）。
+
+### 6.2 退出总结 UI 重构 (Exit Summary UI)
+- **视觉同源**：退出 CLI 时，首行展示与顶部标题栏一致的青色 `QINGMEI` 点阵文字图标及高亮版本号（`v0.1.1`）；
+- **分行排版**：按 `Duration:`, `Turns:`, `Input:`, `Output:`, `Total:` 清晰列出会话总量；
+- **极简设计与空会话静默**：严格杜绝 Emoji，若本次会话未发起过任何请求，退出时静默不输出，避免污染终端。
+
+### 6.3 扩展官方预设模型体系 (GLM / Grok / Qwen)
+- **GLM / 智谱 AI (`glm`)**：
+  - 默认模型：`GLM-5.3-Flash`
+  - 预设模型：`GLM-5.3-Flash`（1M 上下文、支持推理与工具）、`GLM-5.3`（1M 上下文）、`GLM-5.2`（1M 上下文）。
+  - 环境变量：`ZHIPU_API_KEY`、`ZHIPU_BASE_URL`
+- **Grok / xAI (`grok`)**：
+  - 默认模型：`grok-4.6`
+  - 预设模型：`grok-4.6`（1M 上下文、支持推理与工具）、`grok-4.5`（1M 上下文、支持推理与工具）、`grok-4.3`（1M 上下文）。
+  - 环境变量：`XAI_API_KEY`、`XAI_BASE_URL`
+- **Qwen / DashScope 通义千问 (`qwen`)**：
+  - 默认模型：`qwen3.8-max`
+  - 预设模型：`qwen3.8-max`（1M 上下文、支持推理与工具）、`qwen3.8-flash`（1M 上下文、支持推理与工具）、`qwen3.7-plus`（1M 上下文）、`qwen3.7-flash`（1M 上下文）。
+  - 环境变量：`DASHSCOPE_API_KEY`、`DASHSCOPE_BASE_URL`
+
 

@@ -12,6 +12,25 @@
 
 ---
 
+## [0.1.2] - 未发布 (Unreleased)
+
+### 新增特性 (Added)
+- **Token 消耗与 Prompt Cache（KV Cache）命中率统计体系 (`/usage` 与 `/stats`)**：
+  - 深度支持主流大模型服务端 KV Cache / Prompt Cache 命中指标实时采集（适配 OpenAI `prompt_tokens_details.cached_tokens`、DeepSeek `prompt_cache_hit_tokens` 等）。
+  - 单轮生成低侵入式极简纯文本指标展示（如 `[1.4s | in: 1,200 (cached: 1,000, 83.3%) | out: 300]`），实时呈现耗时、输入 Token、缓存命中 Token 与命中率、输出/思考 Token。
+  - 新增专用指令 `/usage`：展示当前会话详细 Token 账单结构、缓存命中利用率与节省统计。
+  - 新增专用指令 `/stats`：展示会话全景活动诊断（交互时长、轮次、工具调用成功率矩阵与 Token 汇总）。
+- **退出总结 UI 重构 (Redesigned Exit Summary UI)**：
+  - 退出程序（`/exit` 或 `/quit`）时，采用与顶部标题栏一致的青色 `QINGMEI` 点阵文字图标与版本号 `v0.1.1`。
+  - 结构化分行清晰排版：按 `Duration:`, `Turns:`, `Input:`, `Output:`, `Total:` 清晰列出会话总量。
+  - 严格保持无 Emoji 的纯文字极简设计，空会话（0 Token 请求）保持静默不污染终端。
+- **扩展 GLM、Grok 与通义千问 (Qwen) 官方预设模型体系**：
+  - **GLM / 智谱 AI (`glm`)**：预设 `GLM-5.3-Flash`（默认，支持思考与工具）、`GLM-5.3`、`GLM-5.2`（全量 1M 上下文）。
+  - **Grok / xAI (`grok`)**：预设 `grok-4.6`（默认，支持思考与工具）、`grok-4.5`（支持思考与工具）、`grok-4.3`（全量 1M 上下文）。
+  - **Qwen / DashScope 通义千问 (`qwen`)**：预设 `qwen3.8-max`（默认，支持思考与工具）、`qwen3.8-flash`（支持思考与工具）、`qwen3.7-plus`、`qwen3.7-flash`（全量 1M 上下文）。
+
+---
+
 ## [0.1.1] - 2026-08-28
 
 ### 新增特性 (Added)

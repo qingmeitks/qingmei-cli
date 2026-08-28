@@ -37,6 +37,13 @@
   - **DeepSeek**：预设 `deepseek-v4-flash`（1M 上下文、支持推理与工具）与 `deepseek-v4-pro`（1M 上下文、支持工具）。
   - **Google Gemini**：预设 `gemini-3.5-flash`、`gemini-3.5-flash-lite`、`gemini-3.6-flash`、`gemini-3.7-flash`（1M 上下文、支持推理与工具）与 `gemini-3.1-pro-preview`（1M 上下文）。
   - **OpenAI**：预设 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.5`（1M 上下文、支持推理与工具）与 `gpt-5.4-mini`（1M 上下文、支持工具）。
+  - **GLM / 智谱 AI**：预设 `GLM-5.3-Flash`（1M 上下文、支持推理与工具）、`GLM-5.3`、`GLM-5.2`（1M 上下文）。
+  - **Grok / xAI**：预设 `grok-4.6`（1M 上下文、支持推理与工具）、`grok-4.5`（1M 上下文、支持推理与工具）、`grok-4.3`（1M 上下文）。
+  - **Qwen / 通义千问**：预设 `qwen3.8-max`（1M 上下文、支持推理与工具）、`qwen3.8-flash`（1M 上下文、支持推理与工具）、`qwen3.7-plus`、`qwen3.7-flash`（1M 上下文）。
+- **Token 消耗与 Prompt Cache 命中率统计 (v0.1.2)**：
+  - 自动捕获各模型服务端 KV Cache / Prompt Cache 命中数据，单轮生成后输出低侵入式耗时与缓存指标（如 `[1.4s | in: 1,200 (cached: 1,000, 83.3%) | out: 300]`）。
+  - 专属 `/usage`（Token 账单与缓存节省分析）与 `/stats`（会话全景活动与工具执行诊断）命令。
+  - 优雅退出总结卡片：呈现青色 `QINGMEI` 点阵文字图标与整洁分行的资源消耗总结。
 - **Model Context Protocol (MCP) 深度集成**：原生支持基于 `stdio` 进程沙箱与 `sse` 远程端点的 MCP Tools、Resources 和 Prompts，自动隔离命名空间。
 - **Skill 技能扩展体系**：标准 `SKILL.md` 规范解析器，支持全局 `~/.qingmei/skills/` 技能仓库与热插拔注入。
 - **三层指令约束体系 (Layered Instructions)**：
@@ -77,7 +84,7 @@ npm run build
 npm link
 ```
 
-> **首次启动引导**：若尚未配置 AI 厂商，青袂将自动启动交互式配置向导，引导您选择厂商（DeepSeek / Gemini 等）、输入 API Key、验证网络连通性，并自动完成预设模型选择。
+> **首次启动引导**：若尚未配置 AI 厂商，青袂将自动启动交互式配置向导，引导您选择厂商（DeepSeek / Gemini / GLM / Grok / Qwen 等）、输入 API Key、验证网络连通性，并自动完成预设模型选择。
 
 ---
 
@@ -105,6 +112,8 @@ npm link
 | **`/trust [path]`** | 信任当前或指定工作区，解锁完整写/执行工具与自定义技能 | `/trust` |
 | **`/untrust [path]`** | 撤销工作区信任，立即进入受限只读保护模式 | `/untrust` |
 | **`/compact`** | 立即压缩与优化当前会话上下文（折叠长日志并提炼关键进展摘要） | `/compact` |
+| **`/usage`** | 查看当前会话的 Token 消耗明细与 Prompt Cache 缓存命中率 | `/usage` |
+| **`/stats`** | 查看会话全景活动诊断（时长、轮次、工具调用成功率与 Token 概览） | `/stats` |
 | **`/clear`** | 清空终端屏幕视口（保留当前会话上下文记忆） | `/clear` |
 | **`/config`** | 查看当前生效的全局配置（支持 `/config edit` 一键唤起系统编辑器） | `/config` |
 | **`/help`** | 显示完整的指令帮助清单 | `/help` |
