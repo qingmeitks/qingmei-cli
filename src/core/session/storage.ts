@@ -35,6 +35,35 @@ export function ensureWorkspaceSessionDir(cwd: string): string {
   return dir;
 }
 
+/**
+ * Format timestamp / Date to 24-hour time string: HH:mm:ss (e.g. 09:50:40 or 14:30:15)
+ */
+export function formatTime24(dateInput?: number | Date | string | null): string {
+  if (!dateInput) return '';
+  const d = typeof dateInput === 'object' ? dateInput : new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Format timestamp / Date to 24-hour date-time string: YYYY-MM-DD HH:mm:ss (e.g. 2026-08-28 09:47:59)
+ */
+export function formatDateTime24(dateInput?: number | Date | string | null): string {
+  if (!dateInput) return '';
+  const d = typeof dateInput === 'object' ? dateInput : new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
 export function generateSessionId(): string {
   const now = new Date();
   const dateStr = now.toISOString().replace(/[-:T]/g, '').slice(0, 14);
@@ -208,8 +237,8 @@ export function exportSessionToMarkdown(snapshot: SessionSnapshot, customTargetP
   lines.push('');
   lines.push(`- **Session ID**: \`${snapshot.id}\``);
   lines.push(`- **Workspace**: \`${snapshot.cwd}\``);
-  lines.push(`- **Created At**: ${new Date(snapshot.createdAt).toLocaleString()}`);
-  lines.push(`- **Updated At**: ${new Date(snapshot.updatedAt).toLocaleString()}`);
+  lines.push(`- **Created At**: ${formatDateTime24(snapshot.createdAt)}`);
+  lines.push(`- **Updated At**: ${formatDateTime24(snapshot.updatedAt)}`);
   lines.push(`- **Message Count**: ${snapshot.messageCount}`);
   lines.push(`- **Estimated Tokens**: ~${snapshot.usedTokens}`);
   lines.push('');

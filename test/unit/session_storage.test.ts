@@ -10,6 +10,8 @@ import {
   exportSessionToMarkdown,
   getWorkspaceHash,
   getWorkspaceSessionDir,
+  formatTime24,
+  formatDateTime24,
   SessionSnapshot,
 } from '../../src/core/session/storage.js';
 import { SessionManager } from '../../src/core/session.js';
@@ -174,5 +176,21 @@ describe('Session Persistence & Archival Storage Engine', () => {
     // Cleanup
     fs.rmSync(getWorkspaceSessionDir(tmpWs), { recursive: true, force: true });
     fs.rmSync(tmpWs, { recursive: true, force: true });
+  });
+
+  it('should format timestamps to strict 24-hour time and date strings', () => {
+    // 2026-08-28 09:05:08 local time
+    const d1 = new Date(2026, 7, 28, 9, 5, 8);
+    expect(formatTime24(d1)).toBe('09:05:08');
+    expect(formatDateTime24(d1)).toBe('2026-08-28 09:05:08');
+
+    // 2026-08-28 21:45:30 local time (PM converted to 24h)
+    const d2 = new Date(2026, 7, 28, 21, 45, 30);
+    expect(formatTime24(d2)).toBe('21:45:30');
+    expect(formatDateTime24(d2)).toBe('2026-08-28 21:45:30');
+
+    // Handles null / undefined / invalid
+    expect(formatTime24(null)).toBe('');
+    expect(formatDateTime24(undefined)).toBe('');
   });
 });

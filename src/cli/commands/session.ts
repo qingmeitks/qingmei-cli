@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { QingmeiAgent } from '../../core/agent.js';
 import { TuiPrompt } from '../ui/prompt.js';
 import { SessionInstance } from '../../core/session/instance.js';
+import { formatTime24, formatDateTime24 } from '../../core/session/storage.js';
 
 export async function handleNewSession(
   nameArg: string,
@@ -125,7 +126,7 @@ export async function handleListSessions(
       ? chalk.red(`[${s.status}]`)
       : chalk.green(`[${s.status}]`);
     const count = s.sessionManager.messages.length;
-    const dateStr = new Date(s.updatedAt).toLocaleTimeString();
+    const dateStr = formatTime24(s.updatedAt);
     lines.push(`  #${s.displayIndex}${nameLabel} ${statusColor}${isActive} - ${count} msgs, last active: ${dateStr}`);
   }
 
@@ -138,7 +139,7 @@ export async function handleListSessions(
       const isLoaded = activeSessions.some((s) => s.id === snap.id);
       const loadedTag = isLoaded ? chalk.dim(' (open in memory)') : '';
       const nameTag = snap.name ? chalk.cyan(` [${snap.name}]`) : '';
-      const dateStr = new Date(snap.updatedAt || snap.createdAt).toLocaleString();
+      const dateStr = formatDateTime24(snap.updatedAt || snap.createdAt);
       lines.push(`  * ${chalk.yellow(snap.id)}${nameTag}${loadedTag} - ${snap.messageCount} msgs, ~${snap.usedTokens} tokens, ${dateStr}`);
     }
   }
@@ -232,7 +233,7 @@ export async function handleResumeSession(
     }
 
     const options = savedSnapshots.map((s) => {
-      const dateStr = new Date(s.updatedAt || s.createdAt).toLocaleString();
+      const dateStr = formatDateTime24(s.updatedAt || s.createdAt);
       const tag = s.name ? `[${s.name}] ` : '';
       return {
         value: s.id,
@@ -278,7 +279,7 @@ export async function handleDeleteSession(
 
   if (!targetId) {
     const options = savedSnapshots.map((s) => {
-      const dateStr = new Date(s.updatedAt || s.createdAt).toLocaleString();
+      const dateStr = formatDateTime24(s.updatedAt || s.createdAt);
       const tag = s.name ? `[${s.name}] ` : '';
       return {
         value: s.id,
