@@ -93,11 +93,54 @@ describe('Session Commands & Exit Guard', () => {
       await handleResumeSession(found.id, agent, prompt);
       expect(agent.pool.activeSession.id).toBe(found.id);
 
-      // Delete
+      // Delete with confirmation modal (mock confirm true)
+      prompt.confirmModal = vi.fn().mockResolvedValue(true);
       await handleDeleteSession(found.id, agent, prompt);
+      expect(prompt.confirmModal).toHaveBeenCalled();
       const afterDel = agent.pool.listSavedSnapshots();
       expect(afterDel.find((s) => s.id === found.id)).toBeUndefined();
     }
+  });
+
+  it('should support batch session deletion and confirm modals', async () => {
+    const { agent, prompt } = createTestEnv();
+
+    // Create 3 saved snapshots
+    agent.session.addMessage({ role: 'user', content: 'Msg 1' });
+    const s1 = agent.saveActiveSession('batch-1');
+
+    await handleNewSession('batch-2', agent, prompt);
+    agent.session.addMessage({ role: 'user', content: 'Msg 2' });
+    const s2 = agent.saveActiveSession('batch-2');
+
+    await handleNewSession('batch-3', agent, prompt);
+    agent.session.addMessage({ role: 'user', content: 'Msg 3' });
+    const s3 = agent.saveActiveSession('batch-3');
+
+    const listBefore = agent.pool.listSavedSnapshots();
+    expect(listBefore.length).toBeGreaterThanOrEqual(3);
+
+    // Cancel batch deletion
+    prompt.confirmModal = vi.fn().mockResolvedValue(false);
+    await handleDeleteSession(`${s1.id} ${s2.id}`, agent, prompt);
+    expect(prompt.confirmModal).toHaveBeenCalled();
+    expect(agent.pool.listSavedSnapshots().find((s) => s.id === s1.id)).toBeDefined();
+    expect(agent.pool.listSavedSnapshots().find((s) => s.id === s2.id)).toBeDefined();
+
+    // Confirm batch deletion of 2 sessions
+    prompt.confirmModal = vi.fn().mockResolvedValue(true);
+    await handleDeleteSession(`${s1.id} ${s2.id}`, agent, prompt);
+    expect(agent.pool.listSavedSnapshots().find((s) => s.id === s1.id)).toBeUndefined();
+    expect(agent.pool.listSavedSnapshots().find((s) => s.id === s2.id)).toBeUndefined();
+    expect(agent.pool.listSavedSnapshots().find((s) => s.id === s3.id)).toBeDefined();
+
+    // Interactive multiselect deletion
+    prompt.multiselectModal = vi.fn().mockResolvedValue([s3.id]);
+    prompt.confirmModal = vi.fn().mockResolvedValue(true);
+    await handleDeleteSession('', agent, prompt);
+    expect(prompt.multiselectModal).toHaveBeenCalled();
+    expect(prompt.confirmModal).toHaveBeenCalled();
+    expect(agent.pool.listSavedSnapshots().find((s) => s.id === s3.id)).toBeUndefined();
   });
 
   it('should handle quit guard when sessions are idle vs running', async () => {

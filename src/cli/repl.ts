@@ -402,7 +402,8 @@ async function handleSlashCommand(
       break;
     }
 
-    case 'delete': {
+    case 'delete':
+    case 'rm': {
       await handleDeleteSession(arg, agent, tuiPrompt);
       break;
     }
@@ -431,12 +432,12 @@ async function handleSlashCommand(
         await handleSaveSession(subArg, agent, tuiPrompt);
       } else if (sub === 'resume') {
         await handleResumeSession(subArg, agent, tuiPrompt);
-      } else if (sub === 'delete') {
+      } else if (sub === 'delete' || sub === 'rm' || sub === 'remove') {
         await handleDeleteSession(subArg, agent, tuiPrompt);
       } else if (sub === 'export') {
         await handleExportSession(subArg, agent, tuiPrompt);
       } else {
-        tuiPrompt.addHistory(chalk.yellow(`Unknown /session subcommand: "${sub}". Available: new, switch, list, rename, close, save, resume, delete, export`));
+        tuiPrompt.addHistory(chalk.yellow(`Unknown /session subcommand: "${sub}". Available: new, switch, list, rename, close, save, resume, delete (rm), export`));
         tuiPrompt.addHistory('');
       }
       break;

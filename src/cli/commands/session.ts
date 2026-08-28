@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { QingmeiAgent } from '../../core/agent.js';
 import { TuiPrompt } from '../ui/prompt.js';
 import { SessionInstance } from '../../core/session/instance.js';
-import { formatTime24, formatDateTime24 } from '../../core/session/storage.js';
+import { formatTime24, formatDateTime24, findMatchingSnapshot, SessionSnapshot } from '../../core/session/storage.js';
 
 export async function handleNewSession(
   nameArg: string,
@@ -269,7 +269,7 @@ export async function handleDeleteSession(
   tuiPrompt: TuiPrompt
 ): Promise<void> {
   const savedSnapshots = agent.pool.listSavedSnapshots();
-  let targetId = idArg?.trim();
+  const rawArg = idArg?.trim();
 
   if (savedSnapshots.length === 0) {
     tuiPrompt.addHistory(chalk.dim('  No saved sessions found to delete.'));
@@ -277,7 +277,57 @@ export async function handleDeleteSession(
     return;
   }
 
-  if (!targetId) {
+  let selectedSnapshots: SessionSnapshot[] = [];
+
+  if (rawArg) {
+    const rawTokens = rawArg.split(/[\s,]+/).filter(Boolean);
+
+    if (rawTokens.includes('all') || rawTokens.includes('ALL') || rawTokens.includes('__ALL__')) {
+      const confirmed = await tuiPrompt.confirmModal({
+        title: 'Delete All Workspace Snapshots',
+        message: `Permanently delete all ${savedSnapshots.length} snapshot files from disk?`,
+        initialValue: false,
+      });
+
+      if (confirmed) {
+        const count = agent.deleteAllSessions();
+        tuiPrompt.addHistory(chalk.green(`✓ Successfully deleted all ${count} session snapshots for this workspace.`));
+        tuiPrompt.addHistory('');
+      } else {
+        tuiPrompt.addHistory(chalk.dim('Cancelled deleting all snapshots.'));
+        tuiPrompt.addHistory('');
+      }
+      return;
+    }
+
+    const notFoundTokens: string[] = [];
+
+    for (const token of rawTokens) {
+      const found = findMatchingSnapshot(savedSnapshots, token);
+      if (found) {
+        if (!selectedSnapshots.some((s) => s.id === found.id)) {
+          selectedSnapshots.push(found);
+        }
+      } else {
+        notFoundTokens.push(token);
+      }
+    }
+
+    if (notFoundTokens.length > 0 && selectedSnapshots.length === 0) {
+      tuiPrompt.addHistory(
+        chalk.red(`✗ Could not find snapshot(s): ${notFoundTokens.map((t) => `"${t}"`).join(', ')}. Type /sessions to list.`)
+      );
+      tuiPrompt.addHistory('');
+      return;
+    }
+
+    if (notFoundTokens.length > 0) {
+      tuiPrompt.addHistory(
+        chalk.yellow(`! Notice: Could not find snapshot(s): ${notFoundTokens.map((t) => `"${t}"`).join(', ')}`)
+      );
+    }
+  } else {
+    // Interactive multi-selection modal
     const options = savedSnapshots.map((s) => {
       const dateStr = formatDateTime24(s.updatedAt || s.createdAt);
       const tag = s.name ? `[${s.name}] ` : '';
@@ -288,41 +338,73 @@ export async function handleDeleteSession(
       };
     });
 
-    options.unshift({
-      value: '__ALL__',
-      label: chalk.redBright('[Clear All Saved Snapshots]'),
-      hint: `Delete all ${savedSnapshots.length} files from disk`,
-    });
-
-    const choice = await tuiPrompt.selectModal({
-      title: 'Select Session Snapshot to Delete',
+    const chosenIds = await tuiPrompt.multiselectModal({
+      title: 'Select Session Snapshots to Delete',
       options,
     });
 
-    if (!choice) return;
-    targetId = choice;
+    if (!chosenIds || chosenIds.length === 0) {
+      tuiPrompt.addHistory(chalk.dim('Cancelled session deletion.'));
+      tuiPrompt.addHistory('');
+      return;
+    }
+
+    selectedSnapshots = savedSnapshots.filter((s) => chosenIds.includes(s.id));
   }
 
-  if (targetId === '__ALL__' || targetId === 'all') {
-    const confirmed = await tuiPrompt.confirmModal({
-      title: 'Delete All Workspace Snapshots',
-      message: `Permanently delete all ${savedSnapshots.length} snapshot files from disk?`,
-      initialValue: false,
-    });
+  if (selectedSnapshots.length === 0) return;
 
-    if (confirmed) {
-      const count = agent.deleteAllSessions();
-      tuiPrompt.addHistory(chalk.green(`✓ Successfully deleted all ${count} session snapshots for this workspace.`));
-      tuiPrompt.addHistory('');
-    }
+  // Confirmation modal dialog before actual deletion
+  let confirmTitle: string;
+  let confirmMessage: string;
+
+  if (selectedSnapshots.length === 1) {
+    const s = selectedSnapshots[0];
+    const label = s.name ? `${s.id} [${s.name}]` : s.id;
+    confirmTitle = 'Confirm Delete Session Snapshot';
+    confirmMessage = `Permanently delete snapshot "${label}" from disk?`;
+  } else {
+    const listPreview = selectedSnapshots
+      .slice(0, 3)
+      .map((s) => (s.name ? `${s.id} [${s.name}]` : s.id))
+      .join(', ');
+    const moreStr = selectedSnapshots.length > 3 ? ` and ${selectedSnapshots.length - 3} more` : '';
+    confirmTitle = 'Confirm Delete Multiple Sessions';
+    confirmMessage = `Permanently delete ${selectedSnapshots.length} snapshot files (${listPreview}${moreStr}) from disk?`;
+  }
+
+  const confirmed = await tuiPrompt.confirmModal({
+    title: confirmTitle,
+    message: confirmMessage,
+    initialValue: false,
+  });
+
+  if (!confirmed) {
+    tuiPrompt.addHistory(chalk.dim('Cancelled session deletion.'));
+    tuiPrompt.addHistory('');
     return;
   }
 
-  const success = agent.pool.deleteSavedSnapshot(targetId);
-  if (success) {
-    tuiPrompt.addHistory(chalk.green(`✓ Deleted snapshot file: ${targetId}`));
+  // Perform deletion
+  let deletedCount = 0;
+  const deletedLabels: string[] = [];
+
+  for (const s of selectedSnapshots) {
+    const success = agent.pool.deleteSavedSnapshot(s.id);
+    if (success) {
+      deletedCount++;
+      deletedLabels.push(s.name ? `${s.id} [${s.name}]` : s.id);
+    }
+  }
+
+  if (deletedCount === 1) {
+    tuiPrompt.addHistory(chalk.green(`✓ Deleted snapshot file: ${deletedLabels[0]}`));
+  } else if (deletedCount > 1) {
+    tuiPrompt.addHistory(
+      chalk.green(`✓ Successfully deleted ${deletedCount} session snapshots:\n  * ${deletedLabels.join('\n  * ')}`)
+    );
   } else {
-    tuiPrompt.addHistory(chalk.red(`✗ Could not delete snapshot "${targetId}".`));
+    tuiPrompt.addHistory(chalk.red('✗ Failed to delete selected snapshots.'));
   }
   tuiPrompt.addHistory('');
 }

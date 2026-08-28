@@ -19,7 +19,8 @@ export const SLASH_COMMANDS: SlashCommandInfo[] = [
   { command: '/close', description: 'Close current or specified session' },
   { command: '/save', description: 'Save current session snapshot to disk' },
   { command: '/resume', description: 'Resume a saved snapshot from disk' },
-  { command: '/delete', description: 'Delete a saved snapshot from disk' },
+  { command: '/delete', description: 'Delete one or more saved snapshots from disk' },
+  { command: '/rm', description: 'Delete one or more saved snapshots from disk' },
   { command: '/export', description: 'Export current session to Markdown report' },
   { command: '/mode', description: 'Switch mode: interactive, auto, readonly, chat' },
   { command: '/model', description: 'Switch AI model & provider' },
@@ -60,6 +61,13 @@ export type ModalState =
       title: string;
       options: ModalOption[];
       selectedIndex: number;
+    }
+  | {
+      type: 'multiselect';
+      title: string;
+      options: ModalOption[];
+      selectedIndex: number;
+      selectedValues: Set<string>;
     }
   | {
       type: 'confirm';
@@ -541,6 +549,61 @@ export class TuiPrompt {
       lines.push(modalRow(chalk.dim('(Up/Down Select, Enter Confirm, Esc Cancel)')));
       lines.push(bottomBorder);
 
+    } else if (this.activeModal.type === 'multiselect') {
+      const { title, options, selectedIndex, selectedValues } = this.activeModal;
+      const modalWidth = Math.min(contentWidth - 4, 72);
+      const modalInner = modalWidth - 2;
+
+      const modalRow = (text: string) => {
+        const fitted = truncateAnsi(text, modalInner - 4);
+        const vLen = getStringWidth(fitted);
+        const pad = Math.max(0, modalInner - 4 - vLen);
+        return `${chalk.cyan('│')}  ${fitted}${' '.repeat(pad)}  ${chalk.cyan('│')}`;
+      };
+
+      const titleText = ` ${chalk.bold.cyanBright(title)} `;
+      const titleLen = getStringWidth(titleText);
+      const topDashTotal = Math.max(0, modalInner - titleLen);
+      const topDashLeft = 2;
+      const topDashRight = Math.max(0, topDashTotal - topDashLeft);
+
+      const topBorder = `${chalk.cyan('┌')}${chalk.cyan('─'.repeat(topDashLeft))}${titleText}${chalk.cyan('─'.repeat(topDashRight))}${chalk.cyan('┐')}`;
+      const bottomBorder = `${chalk.cyan('└')}${chalk.cyan('─'.repeat(modalInner))}${chalk.cyan('┘')}`;
+
+      lines.push(topBorder);
+      lines.push(modalRow(''));
+
+      const maxDisplay = Math.min(options.length, 8);
+      let startIndex = 0;
+      if (selectedIndex >= maxDisplay) {
+        startIndex = selectedIndex - maxDisplay + 1;
+      }
+      const visibleOpts = options.slice(startIndex, startIndex + maxDisplay);
+
+      for (let i = 0; i < visibleOpts.length; i++) {
+        const actualIdx = startIndex + i;
+        const opt = visibleOpts[i];
+        const isCursor = actualIdx === selectedIndex;
+        const isChecked = selectedValues.has(opt.value);
+        const checkMark = isChecked ? chalk.greenBright.bold('[x]') : chalk.dim('[ ]');
+        const hintStr = opt.hint ? chalk.dim(` (${opt.hint})`) : '';
+
+        if (isCursor) {
+          const pointer = chalk.cyanBright('>');
+          const labelStr = chalk.bold.cyanBright(opt.label);
+          lines.push(modalRow(`  ${pointer} ${checkMark} ${labelStr}${hintStr}`));
+        } else {
+          const pointer = ' ';
+          const labelStr = chalk.white(opt.label);
+          lines.push(modalRow(`  ${pointer} ${checkMark} ${labelStr}${hintStr}`));
+        }
+      }
+
+      lines.push(modalRow(''));
+      const countStr = chalk.cyan(`(${selectedValues.size}/${options.length} selected)`);
+      lines.push(modalRow(`${countStr} ${chalk.dim('Space toggle, \'a\' all, Enter confirm, Esc cancel')}`));
+      lines.push(bottomBorder);
+
     } else if (this.activeModal.type === 'confirm') {
       const { title, message, selectedIndex } = this.activeModal;
       const modalWidth = Math.min(contentWidth - 4, Math.max(52, getStringWidth(message) + 12));
@@ -824,6 +887,108 @@ export class TuiPrompt {
           this.activeModal = null;
           this.renderBox('', 0, 0);
           resolve(options.options[selectedIndex]?.value || null);
+          return;
+        }
+
+        if (key.name === 'escape' || (key.ctrl && key.name === 'c')) {
+          cleanup();
+          this.activeModal = null;
+          this.renderBox('', 0, 0);
+          resolve(null);
+          return;
+        }
+      };
+
+      const cleanup = () => {
+        process.stdin.removeListener('keypress', onKeypress);
+      };
+
+      process.stdin.on('keypress', onKeypress);
+    });
+  }
+
+  async multiselectModal(options: {
+    title: string;
+    options: ModalOption[];
+    initialValues?: string[];
+  }): Promise<string[] | null> {
+    if (!process.stdin.isTTY || options.options.length === 0) {
+      return options.initialValues || [];
+    }
+
+    return new Promise((resolve) => {
+      let selectedIndex = 0;
+      const selectedValues = new Set<string>(options.initialValues || []);
+
+      this.activeModal = {
+        type: 'multiselect',
+        title: options.title,
+        options: options.options,
+        selectedIndex,
+        selectedValues,
+      };
+
+      const render = () => {
+        if (this.activeModal && this.activeModal.type === 'multiselect') {
+          this.activeModal.selectedIndex = selectedIndex;
+          this.activeModal.selectedValues = selectedValues;
+        }
+        this.renderBox('', 0, 0);
+      };
+
+      readline.emitKeypressEvents(process.stdin);
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+      }
+      process.stdin.resume();
+
+      render();
+
+      const onKeypress = (str: string | undefined, key: readline.Key) => {
+        if (!key) return;
+
+        if (key.name === 'up') {
+          selectedIndex = (selectedIndex - 1 + options.options.length) % options.options.length;
+          render();
+          return;
+        }
+
+        if (key.name === 'down') {
+          selectedIndex = (selectedIndex + 1) % options.options.length;
+          render();
+          return;
+        }
+
+        if (key.name === 'space' || str === ' ') {
+          const curVal = options.options[selectedIndex]?.value;
+          if (curVal) {
+            if (selectedValues.has(curVal)) {
+              selectedValues.delete(curVal);
+            } else {
+              selectedValues.add(curVal);
+            }
+          }
+          render();
+          return;
+        }
+
+        if (str === 'a' || str === 'A') {
+          if (selectedValues.size === options.options.length) {
+            selectedValues.clear();
+          } else {
+            for (const opt of options.options) {
+              selectedValues.add(opt.value);
+            }
+          }
+          render();
+          return;
+        }
+
+        if (key.name === 'return') {
+          cleanup();
+          this.activeModal = null;
+          this.renderBox('', 0, 0);
+          resolve(Array.from(selectedValues));
           return;
         }
 
