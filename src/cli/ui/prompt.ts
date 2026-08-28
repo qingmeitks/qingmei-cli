@@ -394,8 +394,7 @@ export class TuiPrompt {
 
   addHistory(text: string | string[]): void {
     const cols = process.stdout.columns || 80;
-    const boxWidth = Math.max(40, cols - 4);
-    const contentWidth = boxWidth - 6;
+    const contentWidth = Math.max(20, cols);
 
     if (Array.isArray(text)) {
       for (const t of text) {
@@ -610,34 +609,20 @@ export class TuiPrompt {
     const cols = process.stdout.columns || 80;
     const rows = process.stdout.rows || 24;
 
-    const outerPadX = 2; // Outer horizontal margin
-    const outerPad = ' '.repeat(outerPadX);
-
-    // Calculate box dimensions with outer padding
-    const boxWidth = Math.max(40, cols - outerPadX * 2);
-    const innerWidth = boxWidth - 2; // Space between ┌ and ┐
-    const contentWidth = innerWidth - 4; // Space with inner padding
-
-    const totalBoxHeight = Math.max(12, rows - 2);
+    const contentWidth = Math.max(20, cols);
+    const totalBoxHeight = Math.max(12, rows - 1);
 
     const formatRow = (content: string): string => {
       const fittedContent = truncateAnsi(content, contentWidth);
-      const visibleLen = getStringWidth(fittedContent);
-      const pad = Math.max(0, contentWidth - visibleLen);
-      return `${outerPad}${chalk.dim('│')}  ${fittedContent}${' '.repeat(pad)}  ${chalk.dim('│')}`;
+      return fittedContent + '\x1b[K';
     };
 
-    const topBorder = `${outerPad}${chalk.dim('┌')}${chalk.dim('─'.repeat(innerWidth))}${chalk.dim('┐')}`;
-    const bottomBorder = `${outerPad}${chalk.dim('└')}${chalk.dim('─'.repeat(innerWidth))}${chalk.dim('┘')}`;
-    const innerDivider = `${outerPad}${chalk.dim('│')}  ${chalk.dim('─'.repeat(contentWidth))}  ${chalk.dim('│')}`;
+    const innerDivider = formatRow(chalk.dim('─'.repeat(contentWidth)));
 
-    // Top Section: Title & Subtitle (Pristine ASCII header untouched)
+    // Top Section: Title & Subtitle
     const topLines: string[] = [
-      topBorder,
-      formatRow(chalk.bold.cyanBright('█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █')),
-      formatRow(chalk.bold.cyanBright('▀▀█ █ █ ▀█ █▄█ █ ▀ █ ██▄ █') + chalk.bold.whiteBright('   CLI v0.1.0')),
-      formatRow(chalk.dim('Type your request, @file, !cmd, or slash commands (e.g. /help, /mode, /model, /exit)')),
-      formatRow(''),
+      formatRow(chalk.bold.cyanBright('█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █') + '   ' + chalk.bold.whiteBright('v0.1.0')),
+      formatRow(chalk.bold.cyanBright('▀▀█ █ █ ▀█ █▄█ █ ▀ █ ██▄ █') + '   ' + chalk.dim('Type your request, @file, !cmd, or slash commands (e.g. /help, /mode, /model, /exit)')),
       formatRow(''),
     ];
 
@@ -665,7 +650,6 @@ export class TuiPrompt {
       innerDivider,
       formatRow(this.getStatusBarText(contentWidth)),
       formatRow(secondStatusLine),
-      bottomBorder,
     ];
 
     // Calculate available viewport height in the middle for Operation History
@@ -716,8 +700,7 @@ export class TuiPrompt {
         const modalLine = modalRows[i];
         const modalW = getStringWidth(modalLine);
         const leftSpace = Math.max(0, Math.floor((contentWidth - modalW) / 2));
-        const rightSpace = Math.max(0, contentWidth - modalW - leftSpace);
-        middleLines[startInject + i] = `${outerPad}${chalk.dim('│')}  ${' '.repeat(leftSpace)}${modalLine}${' '.repeat(rightSpace)}  ${chalk.dim('│')}`;
+        middleLines[startInject + i] = formatRow(`${' '.repeat(leftSpace)}${modalLine}`);
       }
     } else {
       // Check @mention overlay
@@ -779,7 +762,7 @@ export class TuiPrompt {
 
     // Reposition cursor in input box
     const cursorRow = topLines.length + viewportHeight + 3;
-    const cursorCol = outerPadX + 1 + 2 + 2 + visualCursorOffset + 1;
+    const cursorCol = 1 + 2 + visualCursorOffset;
     process.stdout.write(`\x1b[${cursorRow};${cursorCol}H\x1b[?25h`);
   }
 

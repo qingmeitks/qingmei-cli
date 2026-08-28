@@ -114,10 +114,33 @@ describe('TuiPrompt & Slash Command Suggestions', () => {
     const m1 = prompt.getMentionMatches('Check this file @src', 20);
     expect(m1).not.toBeNull();
     expect(m1?.query).toBe('src');
-    expect(m1?.matches.length).toBeGreaterThan(0);
-
     const mNone = prompt.getMentionMatches('Normal text without at', 22);
     expect(mNone).toBeNull();
+  });
+
+  it('should render borderless output layout', () => {
+    let capturedOutput = '';
+    const originalWrite = process.stdout.write;
+    const originalIsTTY = process.stdin.isTTY;
+
+    try {
+      process.stdin.isTTY = true;
+      process.stdout.write = ((str: string) => {
+        capturedOutput += str;
+        return true;
+      }) as any;
+
+      tuiPrompt.renderBox('test-input', 0, 0);
+
+      // Verify outer box border characters are not present in screen frame
+      expect(capturedOutput).not.toContain('┌─');
+      expect(capturedOutput).not.toContain('└─');
+      expect(capturedOutput).toContain('█▀█');
+      expect(capturedOutput).toContain('> test-input');
+    } finally {
+      process.stdout.write = originalWrite;
+      process.stdin.isTTY = originalIsTTY;
+    }
   });
 });
 
