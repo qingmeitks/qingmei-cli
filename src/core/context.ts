@@ -231,9 +231,25 @@ export class ContextManager {
     // Apply micro tool output folding to older messages
     const { messages: foldedHistory } = foldToolOutputs(history, maxToolChars, recentWindow);
 
+    // Sanitize messages so assistant messages always have valid content or tool_calls
+    const sanitizeHistory = (msgs: ChatMessage[]): ChatMessage[] => {
+      return msgs.map((m) => {
+        if (m.role === 'assistant') {
+          const hasTools = m.tool_calls && m.tool_calls.length > 0;
+          if (!m.content && !hasTools) {
+            return {
+              ...m,
+              content: m.reasoning_content ? '[Interrupted]' : '[No response]',
+            };
+          }
+        }
+        return m;
+      });
+    };
+
     // If compaction is disabled, return folded messages
     if (compaction && compaction.enabled === false) {
-      return [systemMessage, ...foldedHistory];
+      return [systemMessage, ...sanitizeHistory(foldedHistory)];
     }
 
     // Estimate current token usage of the session
@@ -244,10 +260,10 @@ export class ContextManager {
     // If usage exceeds threshold or message count is very high (> 40), trigger auto-compaction
     if (usagePct >= thresholdPct || (!is1M && foldedHistory.length > 30)) {
       const compacted = compactDialogueHistory(foldedHistory, recentWindow, maxToolChars);
-      return [systemMessage, ...compacted.compactedMessages];
+      return [systemMessage, ...sanitizeHistory(compacted.compactedMessages)];
     }
 
-    return [systemMessage, ...foldedHistory];
+    return [systemMessage, ...sanitizeHistory(foldedHistory)];
   }
 }
 

@@ -169,4 +169,22 @@ describe('MultiSessionPool & Session Concurrency', () => {
     pool.terminateAll();
     expect(pool.hasRunningSessions()).toBe(false);
   });
+
+  it('should support aborting active session execution cleanly', async () => {
+    const pool = new MultiSessionPool({
+      workingDirectory: tmpDir,
+      securityMode: 'interactive',
+      llmClient: mockLLMClient,
+      activeModel: model,
+      toolDispatcher: dispatcher,
+    });
+
+    const active = pool.activeSession;
+    active.setStatus('running');
+    expect(active.isRunning).toBe(true);
+
+    active.abort();
+    expect(active.status).toBe('error');
+    expect(active.currentAction).toBe('Execution interrupted');
+  });
 });

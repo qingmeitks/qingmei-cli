@@ -34,6 +34,7 @@ export interface LLMOptions {
   tools?: ToolDefinition[];
   toolChoice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
   thinkingEffort?: 'off' | 'low' | 'medium' | 'high';
+  signal?: AbortSignal;
 }
 
 

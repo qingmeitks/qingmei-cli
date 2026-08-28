@@ -159,6 +159,10 @@ export class QingmeiAgent {
     return this.pool.exportSession(sessionId, targetPath);
   }
 
+  abort(): void {
+    this.pool.activeSession.abort();
+  }
+
   async run(userInput: string, callbacks: AgentCallbacks = {}): Promise<string> {
     const active = this.pool.activeSession;
     return active.run(userInput, {

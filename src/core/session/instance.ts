@@ -127,6 +127,8 @@ export class SessionInstance {
     const executionPromise = (async () => {
       let currentStep = 0;
       let finalAssistantReply = '';
+      let currentContent = '';
+      let currentReasoning = '';
 
       try {
         while (currentStep < this.maxSteps) {
@@ -143,14 +145,15 @@ export class SessionInstance {
           const toolDefs = this.dispatcher.registry.getToolDefinitionsForMode(this.securityMode);
 
           // 4. Stream LLM Response
-          let currentContent = '';
-          let currentReasoning = '';
+          currentContent = '';
+          currentReasoning = '';
           let currentToolCalls: ToolCall[] | undefined;
 
           const stream = this.llmClient.chatStream(messages, {
             model: this.activeModel.id,
             tools: toolDefs.length > 0 ? toolDefs : undefined,
             thinkingEffort: this.thinkingEffort,
+            signal,
           });
 
           for await (const event of stream) {
@@ -253,10 +256,23 @@ export class SessionInstance {
 
         return finalAssistantReply;
       } catch (err: any) {
-        if (signal.aborted) {
+        const isCancelled = signal.aborted || err.name === 'AbortError' || err.message?.includes('cancelled') || err.message?.includes('aborted');
+        if (isCancelled) {
+          const assistantText = currentContent
+            ? `${currentContent} [Interrupted]`
+            : (currentReasoning ? `[Interrupted during reasoning]` : `[Interrupted by user]`);
+
+          const partialMsg: ChatMessage = {
+            role: 'assistant',
+            content: assistantText,
+            reasoning_content: currentReasoning || undefined,
+          };
+          this.sessionManager.addMessage(partialMsg);
+          this.updatedAt = Date.now();
+
           this.setStatus('ready', 'cancelled');
           callbacks.onStatusChange?.('ready');
-          return '';
+          return currentContent || '';
         }
 
         this.setStatus('error', err.message || String(err));

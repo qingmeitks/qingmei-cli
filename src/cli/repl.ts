@@ -1,4 +1,5 @@
 import child_process from 'child_process';
+import readline from 'readline';
 import chalk from 'chalk';
 import * as p from '@clack/prompts';
 import {
@@ -252,6 +253,7 @@ export async function startRepl(): Promise<void> {
     try {
       let currentReasoning = '';
       let currentText = '';
+      let isInterrupted = false;
 
       // Expand any @filepath references into structured context
       const mentionResult = expandMentions(input, agent.workingDirectory);
@@ -263,48 +265,76 @@ export async function startRepl(): Promise<void> {
       }
 
       // Start animated live activity spinner in history area
-      tuiPrompt.startSpinner('Thinking...');
+      tuiPrompt.startSpinner('Thinking... (Esc / Ctrl+C to stop)');
 
-      await agent.run(finalPrompt, {
-        onReasoningChunk: (delta) => {
-          currentReasoning += delta;
-          tuiPrompt.updateSpinner('Thinking (reasoning)...');
-          tuiPrompt.setLiveLines([chalk.gray(`[thinking: ${currentReasoning.trim()}]`)]);
-        },
-        onTextChunk: (delta) => {
-          currentText += delta;
-          tuiPrompt.updateSpinner('Generating response...');
-          tuiPrompt.setLiveLines([chalk.white(currentText)]);
-        },
-        onToolCallStart: (name) => {
-          tuiPrompt.setLiveLines([chalk.cyan(`> call: ${name}`)]);
-          tuiPrompt.updateSpinner(`Executing tool: ${name}...`);
-        },
-        onToolCallResult: (name, output, durationMs, success) => {
-          const statusIcon = success ? chalk.green('✓') : chalk.red('✗');
-          const durationStr = chalk.dim(`(${durationMs}ms)`);
-          tuiPrompt.setLiveLines([`${statusIcon} ${chalk.dim(name)} ${durationStr}`]);
-          tuiPrompt.updateSpinner('Thinking...');
-        },
-        onConfirm: async (description) => {
-          tuiPrompt.stopSpinner();
-          tuiPrompt.clearLiveLines();
-          const confirmed = await tuiPrompt.confirmModal({
-            title: 'Confirm Tool Action',
-            message: `Allow action: ${description}`,
-            initialValue: true,
-          });
-          tuiPrompt.startSpinner('Executing...');
-          return confirmed;
-        },
-      });
+      // Runtime interrupt listener for Esc / Ctrl+C
+      const onInterruptKey = (str: string | undefined, key: readline.Key) => {
+        if (!key) return;
+        if (key.name === 'escape' || (key.ctrl && key.name === 'c')) {
+          isInterrupted = true;
+          tuiPrompt.updateSpinner('Stopping generation...');
+          agent.abort();
+        }
+      };
+
+      readline.emitKeypressEvents(process.stdin);
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+      }
+      process.stdin.on('keypress', onInterruptKey);
+
+      try {
+        await agent.run(finalPrompt, {
+          onReasoningChunk: (delta) => {
+            currentReasoning += delta;
+            tuiPrompt.updateSpinner('Thinking (reasoning)... (Esc / Ctrl+C to stop)');
+            tuiPrompt.setLiveLines([chalk.gray(`[thinking: ${currentReasoning.trim()}]`)]);
+          },
+          onTextChunk: (delta) => {
+            currentText += delta;
+            tuiPrompt.updateSpinner('Generating response... (Esc / Ctrl+C to stop)');
+            tuiPrompt.setLiveLines([chalk.white(currentText)]);
+          },
+          onToolCallStart: (name) => {
+            tuiPrompt.setLiveLines([chalk.cyan(`> call: ${name}`)]);
+            tuiPrompt.updateSpinner(`Executing tool: ${name}... (Esc / Ctrl+C to stop)`);
+          },
+          onToolCallResult: (name, output, durationMs, success) => {
+            const statusIcon = success ? chalk.green('✓') : chalk.red('✗');
+            const durationStr = chalk.dim(`(${durationMs}ms)`);
+            tuiPrompt.setLiveLines([`${statusIcon} ${chalk.dim(name)} ${durationStr}`]);
+            tuiPrompt.updateSpinner('Thinking... (Esc / Ctrl+C to stop)');
+          },
+          onConfirm: async (description) => {
+            tuiPrompt.stopSpinner();
+            tuiPrompt.clearLiveLines();
+            process.stdin.removeListener('keypress', onInterruptKey);
+            const confirmed = await tuiPrompt.confirmModal({
+              title: 'Confirm Tool Action',
+              message: `Allow action: ${description}`,
+              initialValue: true,
+            });
+            process.stdin.on('keypress', onInterruptKey);
+            tuiPrompt.startSpinner('Executing... (Esc / Ctrl+C to stop)');
+            return confirmed;
+          },
+        });
+      } finally {
+        process.stdin.removeListener('keypress', onInterruptKey);
+      }
 
       // Stop spinner and clear temporary execution process from live lines
       tuiPrompt.stopSpinner();
       tuiPrompt.clearLiveLines();
 
-      // Keep ONLY the final result in permanent history
-      if (currentText.trim()) {
+      if (isInterrupted) {
+        if (currentText.trim()) {
+          tuiPrompt.addHistory(currentText.trim());
+        }
+        tuiPrompt.addHistory(chalk.yellow('⏹ Generation stopped by user.'));
+        tuiPrompt.addHistory('');
+      } else if (currentText.trim()) {
+        // Keep ONLY the final result in permanent history
         tuiPrompt.addHistory(currentText.trim());
         tuiPrompt.addHistory('');
       }
@@ -323,8 +353,14 @@ export async function startRepl(): Promise<void> {
     } catch (err: any) {
       tuiPrompt.stopSpinner();
       tuiPrompt.clearLiveLines();
-      tuiPrompt.addHistory(chalk.red(`Execution Error: ${err.message || String(err)}`));
-      tuiPrompt.addHistory('');
+      const isCancelled = err.name === 'AbortError' || err.message?.includes('cancelled') || err.message?.includes('aborted');
+      if (!isCancelled) {
+        tuiPrompt.addHistory(chalk.red(`Execution Error: ${err.message || String(err)}`));
+        tuiPrompt.addHistory('');
+      } else {
+        tuiPrompt.addHistory(chalk.yellow('⏹ Generation stopped by user.'));
+        tuiPrompt.addHistory('');
+      }
       tuiPrompt.renderBox('', 0, 0);
     }
   }

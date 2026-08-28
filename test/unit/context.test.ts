@@ -67,5 +67,23 @@ describe('ContextManager & Prompt Assembly (QINGMEI.md & AGENTS.md)', () => {
     expect(usage.display).toContain('/1M');
     expect(usage.display).toContain('%');
   });
+
+  it('should sanitize empty assistant messages when preparing messages', () => {
+    const model = getModelMetadata('deepseek-chat', 'deepseek');
+    const contextManager = new ContextManager({
+      workingDirectory: '/workspace',
+      activeModel: model,
+    });
+
+    const prepared = contextManager.prepareMessages([
+      { role: 'user', content: 'hello' },
+      { role: 'assistant', content: null, reasoning_content: 'thinking...' }, // Interrupted during reasoning
+      { role: 'user', content: 'next question' },
+    ]);
+
+    const assistantMsg = prepared.find((m) => m.role === 'assistant');
+    expect(assistantMsg).toBeDefined();
+    expect(assistantMsg?.content).toBe('[Interrupted]');
+  });
 });
 

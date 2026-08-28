@@ -233,7 +233,6 @@ describe('Config Loader & Model Metadata', () => {
     expect(deepseekModels[1].contextWindow).toBe(1000000);
     expect(deepseekModels[1].is1MContext).toBe(true);
 
-
     const geminiModels = getProviderModels('gemini', DEFAULT_PRESET_CONFIG);
     expect(geminiModels.map((m) => m.id)).toEqual([
       'gemini-3.5-flash',

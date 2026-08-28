@@ -8,6 +8,7 @@ import {
   ToolCall,
 } from './types.js';
 import { ModelMetadata } from '../../config/types.js';
+import { DEFAULT_PRESET_CONFIG } from '../../config/defaults.js';
 
 export interface LLMClientConfig {
   apiKey: string;
@@ -289,10 +290,11 @@ export class LLMClient {
           };
         }
         if (msg.role === 'assistant') {
+          const hasTools = msg.tool_calls && msg.tool_calls.length > 0;
           return {
             role: 'assistant',
-            content: msg.content,
-            tool_calls: msg.tool_calls as any,
+            content: msg.content ?? (hasTools ? null : '[Interrupted]'),
+            tool_calls: hasTools ? (msg.tool_calls as any) : undefined,
           };
         }
         return {
@@ -333,7 +335,8 @@ export class LLMClient {
     }
 
     const stream = await this.client.chat.completions.create(
-      requestPayload as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming
+      requestPayload as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
+      options.signal ? { signal: options.signal } : undefined
     );
 
 
@@ -616,7 +619,7 @@ export class LLMClient {
     const start = Date.now();
     const cleanKey = apiKey.trim();
     const effectiveBaseUrl = baseUrl || 'https://api.openai.com/v1';
-    const effectiveModel = modelId && modelId !== 'dummy' ? modelId : 'deepseek-chat';
+    const effectiveModel = modelId && modelId !== 'dummy' ? modelId : (DEFAULT_PRESET_CONFIG.providers[provider]?.defaultModel || 'default');
 
     const probeClient = new LLMClient({
       apiKey: cleanKey,
@@ -649,30 +652,31 @@ export class LLMClient {
     } catch (err: any) {
       const errMsg = err?.message || String(err);
 
-      // Distinguish model not found (where API key is valid) from auth/quota/network failures
-      const isModelOnlyError =
-        (errMsg.includes('does not exist') ||
-          errMsg.includes('not found') ||
-          errMsg.includes('Model not found') ||
-          errMsg.includes('model_not_found') ||
-          errMsg.includes('404')) &&
-        !errMsg.includes('API_KEY_INVALID') &&
-        !errMsg.includes('API key not valid') &&
-        !errMsg.includes('401') &&
-        !errMsg.includes('403') &&
-        !errMsg.includes('400') &&
-        !errMsg.includes('Unauthorized') &&
-        !errMsg.includes('Forbidden');
+      // Explicit authentication / authorization failure patterns:
+      const isAuthError =
+        errMsg.includes('401') ||
+        errMsg.includes('API_KEY_INVALID') ||
+        errMsg.includes('API key not valid') ||
+        errMsg.includes('invalid_api_key') ||
+        errMsg.includes('Incorrect API key') ||
+        errMsg.includes('Unauthorized') ||
+        errMsg.includes('Authentication Fails') ||
+        errMsg.includes('403') ||
+        errMsg.includes('Forbidden') ||
+        errMsg.includes('Insufficient Balance') ||
+        errMsg.includes('insufficient_quota') ||
+        errMsg.includes('credit limit');
 
-      if (isModelOnlyError) {
-        return { success: true, latencyMs: Date.now() - start };
+      if (isAuthError) {
+        return {
+          success: false,
+          latencyMs: Date.now() - start,
+          error: errMsg,
+        };
       }
 
-      return {
-        success: false,
-        latencyMs: Date.now() - start,
-        error: errMsg,
-      };
+      // Other errors (e.g. model not found, parameters error) mean the API Key itself passed authentication
+      return { success: true, latencyMs: Date.now() - start };
     }
   }
 }
