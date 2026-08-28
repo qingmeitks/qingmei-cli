@@ -112,6 +112,18 @@ Within the `qingmei` interactive prompt, type `/` to view suggestions with `Tab`
 
 ---
 
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Description |
+| :--- | :--- |
+| **`Tab`** | Cycle through active sessions when input is empty; autocomplete commands and `@file` mentions |
+| **`Up` / `Down`** | Traverse input command history and navigate suggestion dropdowns |
+| **`Shift + Up` / `Shift + Down`** | Smoothly scroll dialogue history up/down in the main TUI viewport |
+| **`Esc` / `Ctrl + C`** | Stop active LLM response stream during generation; clears text when typing |
+| **`/exit` or `/quit`** | Safely exit Qingmei CLI (exclusive command to exit) |
+
+---
+
 ## 🛠️ Core Techniques
 
 ### 1. Context File Mentions (`@file`)

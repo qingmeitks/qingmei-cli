@@ -13,6 +13,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.1] - 2026-08-28
+
+### Added
+- **Dedicated Viewport History Scrolling**:
+  - `Shift + Up` / `Shift + Down`: Smoothly scroll through dialogue history in the main TUI viewport.
+  - Visible scroll indicator badge rendered at the bottom of the viewport showing line count and return hint (`▲ Scrolled back N lines [X-Y/Total] (Shift+Down to return)`).
+- **Generation Interrupt & Abort**:
+  - Press `Esc` or `Ctrl+C` at any time during active stream generation to safely stop the LLM response without exiting the CLI.
+- **Floating Modal Overlays & Batch Deletion**:
+  - Centered floating overlays for confirmation and multi-selection dialogs.
+  - Multi-session batch deletion support with `/delete` (interactive modal selection, ID/prefix/suffix matching, and `/delete all`).
+- **Runtime Metadata Context Injection**:
+  - Injected active provider, active model, context window, and model catalog directly into the system prompt to eliminate redundant workspace scans when querying runtime status.
+
+### Changed
+- **Navigation & Hotkey Clarification**:
+  - `Up` / `Down` arrow keys are strictly dedicated to input box command history and dropdown autocomplete navigation.
+  - Exiting the CLI is now strictly performed via `/exit` (or `/quit`), removing accidental termination from `Ctrl+C` / `Ctrl+D`.
+- **API Key Persistence & Isolation**:
+  - Isolated test environments to prevent overwriting user configuration files in `~/.qingmei/config.json`.
+  - Immediate synchronization between file configuration and active environment variables.
+
+### Fixed
+- **Terminal Resize & Display Artifacts**:
+  - Added screen erasure sequence `\x1b[J` to prevent residual duplicate status bar lines when resizing the terminal window.
+  - Cleaned up mouse motion tracking sequences to eliminate random character injection (`34;61;30M...`) in the prompt input dock.
+- **LLM Stream Done Event & Message Sanitization**:
+  - Added `done` event emission in `LLMClient.chatStream` to ensure tool call results and assistant replies are accurately persisted in conversation history.
+  - Sanitized empty assistant messages to prevent `400 Bad Request` API errors.
+
+---
+
 ## [0.1.0] - 2026-08-22
 
 ### Added

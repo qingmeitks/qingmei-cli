@@ -1,6 +1,6 @@
 {
   "name": "@qingmeitks/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Adaptive, Lightweight, and Multi-Session Agentic AI CLI with 1M+ Context, Zero Pollution, and MCP/Skills Extensibility",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

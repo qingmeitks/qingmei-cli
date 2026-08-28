@@ -737,7 +737,7 @@ export class TuiPrompt {
 
     // Top Section: Title & Subtitle
     const topLines: string[] = [
-      formatRow(chalk.bold.cyanBright('█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █') + '   ' + chalk.bold.whiteBright('v0.1.0')),
+      formatRow(chalk.bold.cyanBright('█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █') + '   ' + chalk.bold.whiteBright('v0.1.1')),
       formatRow(chalk.bold.cyanBright('▀▀█ █ █ ▀█ █▄█ █ ▀ █ ██▄ █') + '   ' + chalk.dim('Type your request, @file, !cmd, or slash commands (e.g. /help, /mode, /model, /exit)')),
       formatRow(''),
     ];
