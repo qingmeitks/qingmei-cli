@@ -3,7 +3,7 @@ import { SecurityMode, ModelMetadata } from '../../config/types.js';
 import { getContextDisplayBadge } from '../../config/loader.js';
 import { SessionStatus } from '../../core/session/types.js';
 
-export const APP_VERSION = 'v0.1.1';
+export const APP_VERSION = 'v0.1.2';
 
 export const QINGMEI_LOGO_LINES = [
   '█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █',

@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { TokenUsage } from '../llm/types.js';
 import { ToolActivityStats, TurnStats, UsageSummary, ActivitySummary } from './types.js';
 
-export const APP_VERSION = 'v0.1.1';
+export const APP_VERSION = 'v0.1.2';
 export const QINGMEI_LOGO_LINES = [
   '█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █',
   '▀▀█ █ █ ▀█ █▄█ █ ▀ █ ██▄ █',

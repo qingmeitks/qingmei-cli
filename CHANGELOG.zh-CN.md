@@ -12,7 +12,7 @@
 
 ---
 
-## [0.1.2] - 未发布 (Unreleased)
+## [0.1.2] - 2026-08-28
 
 ### 新增特性 (Added)
 - **Token 消耗与 Prompt Cache（KV Cache）命中率统计体系 (`/usage` 与 `/stats`)**：
