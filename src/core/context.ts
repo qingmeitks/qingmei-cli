@@ -194,10 +194,14 @@ export class ContextManager {
       }
     }
 
-    // 4. Runtime metadata
+    // 4. Runtime & Environment Context
     parts.push(``);
-    parts.push(`Working Directory: ${cwd}`);
-    parts.push(`Current Model: ${model.name} (${model.is1MContext ? '1M Context' : `${Math.round(model.contextWindow / 1000)}k Context`})`);
+    parts.push(`# Runtime Environment & Model Information:`);
+    parts.push(`- Working Directory: ${cwd}`);
+    parts.push(`- Active Provider: ${model.provider || 'default'}`);
+    parts.push(`- Active Model: ${model.id} (${model.name || model.id}) [${model.is1MContext ? '1M Context' : `${Math.round((model.contextWindow || 200000) / 1000)}k Context`}]`);
+    parts.push(`- Slash Commands available to user: /help, /mode, /model, /key, /sessions, /effort, /compact, /skills, /mcp, /exit`);
+    parts.push(`- Note: When answering questions about your current model, provider, available models, or CLI commands, directly use the runtime metadata provided here without inspecting workspace files or running shell commands.`);
 
     return parts.join('\n');
   }

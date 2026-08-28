@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
@@ -22,6 +22,21 @@ import {
 } from '../../src/cli/commands/key.js';
 
 describe('API Key Management & Security', () => {
+  let tmpHome: string;
+  const originalEnv = { ...process.env };
+
+  beforeAll(() => {
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'qingmei-test-home-'));
+    process.env.QINGMEI_HOME = tmpHome;
+    process.env.QINGMEI_CONFIG_PATH = path.join(tmpHome, 'config.json');
+  });
+
+  afterAll(() => {
+    process.env = { ...originalEnv };
+    if (fs.existsSync(tmpHome)) {
+      fs.rmSync(tmpHome, { recursive: true, force: true });
+    }
+  });
   describe('maskApiKey', () => {
     it('handles empty or undefined keys safely', () => {
       expect(maskApiKey(undefined)).toBe('(not set)');

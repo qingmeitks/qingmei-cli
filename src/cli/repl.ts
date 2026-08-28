@@ -283,8 +283,9 @@ export async function startRepl(): Promise<void> {
       }
       process.stdin.on('keypress', onInterruptKey);
 
+      let reply = '';
       try {
-        await agent.run(finalPrompt, {
+        reply = await agent.run(finalPrompt, {
           onReasoningChunk: (delta) => {
             currentReasoning += delta;
             tuiPrompt.updateSpinner('Thinking (reasoning)... (Esc / Ctrl+C to stop)');
@@ -327,15 +328,19 @@ export async function startRepl(): Promise<void> {
       tuiPrompt.stopSpinner();
       tuiPrompt.clearLiveLines();
 
+      const finalOutput = (reply || currentText || '').trim();
+
       if (isInterrupted) {
-        if (currentText.trim()) {
-          tuiPrompt.addHistory(currentText.trim());
+        if (finalOutput) {
+          tuiPrompt.addHistory(finalOutput);
         }
         tuiPrompt.addHistory(chalk.yellow('⏹ Generation stopped by user.'));
         tuiPrompt.addHistory('');
-      } else if (currentText.trim()) {
-        // Keep ONLY the final result in permanent history
-        tuiPrompt.addHistory(currentText.trim());
+      } else if (finalOutput) {
+        tuiPrompt.addHistory(finalOutput);
+        tuiPrompt.addHistory('');
+      } else if (currentReasoning.trim()) {
+        tuiPrompt.addHistory(chalk.gray(currentReasoning.trim()));
         tuiPrompt.addHistory('');
       }
 

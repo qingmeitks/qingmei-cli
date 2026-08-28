@@ -409,6 +409,13 @@ export class LLMClient {
       },
     }));
 
+    yield {
+      type: 'done',
+      fullContent,
+      fullReasoning: fullReasoning || undefined,
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    };
+
     return {
       content: fullContent,
       reasoningContent: fullReasoning || undefined,

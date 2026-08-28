@@ -161,6 +161,35 @@ describe('TuiPrompt & Slash Command Suggestions', () => {
     expect(getStringWidth(cjkSliced)).toBe(8);
     expect(cjkSliced).toContain('你好世界');
   });
+  it('should render scroll indicator badge when history is scrolled back', () => {
+    let capturedOutput = '';
+    const originalWrite = process.stdout.write;
+    const originalIsTTY = process.stdin.isTTY;
+
+    try {
+      process.stdin.isTTY = true;
+      process.stdout.write = ((str: string) => {
+        capturedOutput += str;
+        return true;
+      }) as any;
+
+      tuiPrompt.clearHistory();
+      for (let i = 0; i < 50; i++) {
+        tuiPrompt.addHistory(`History line ${i}`);
+      }
+
+      // Force scroll offset > 0
+      (tuiPrompt as any).scrollOffset = 10;
+      tuiPrompt.renderBox('', 0, 0);
+
+      expect(capturedOutput).toContain('Scrolled back 10 lines');
+      expect(capturedOutput).toContain('Shift+Down');
+    } finally {
+      process.stdout.write = originalWrite;
+      process.stdin.isTTY = originalIsTTY;
+      (tuiPrompt as any).scrollOffset = 0;
+    }
+  });
 });
 
 

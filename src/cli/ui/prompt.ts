@@ -806,6 +806,14 @@ export class TuiPrompt {
       middleLines.push(formatRow(''));
     }
 
+    // If user scrolled back into history, display a visible badge at the bottom of the viewport
+    if (this.scrollOffset > 0 && middleLines.length > 0) {
+      const scrollBadge = chalk.bgYellow.black.bold(
+        ` ▲ Scrolled back ${this.scrollOffset} lines [${startIndex + 1}-${Math.min(startIndex + viewportHeight, totalHistory)}/${totalHistory}] (Shift+Down to return) `
+      );
+      middleLines[middleLines.length - 1] = formatRow(scrollBadge);
+    }
+
     // Floating overlay rendering
     if (this.activeModal) {
       const modalRows = this.renderModalOverlay(contentWidth);
@@ -876,8 +884,8 @@ export class TuiPrompt {
       ...bottomDockLines,
     ];
 
-    // Atomic full-screen draw
-    const outputBuffer = '\x1b[?25l\x1b[H' + allScreenRows.join('\n') + '\n';
+    // Atomic full-screen draw with \x1b[J to erase any residual rows below
+    const outputBuffer = '\x1b[?25l\x1b[H' + allScreenRows.join('\n') + '\n\x1b[J';
     process.stdout.write(outputBuffer);
 
     // Reposition cursor in input box
@@ -1287,6 +1295,7 @@ export class TuiPrompt {
       process.stdout.write('\x1b[?2004h');
 
       const onResize = () => {
+        process.stdout.write('\x1b[2J\x1b[3J\x1b[H');
         render();
       };
       process.stdout.on('resize', onResize);
@@ -1302,18 +1311,6 @@ export class TuiPrompt {
         if (str.includes('\x1b[201~')) {
           isBracketedPasting = false;
         }
-
-        if (str.includes('<64;')) {
-          const maxScroll = Math.max(0, this.history.length + this.liveLines.length - 5);
-          this.scrollOffset = Math.min(maxScroll, this.scrollOffset + 3);
-          render();
-          return;
-        }
-        if (str.includes('<65;')) {
-          this.scrollOffset = Math.max(0, this.scrollOffset - 3);
-          render();
-          return;
-        }
       };
       process.stdin.on('data', onRawData);
 
@@ -1322,6 +1319,17 @@ export class TuiPrompt {
       const onKeypress = (str: string | undefined, key: readline.Key) => {
         if (!key) return;
         if (key.sequence === '\x1b[200~' || key.sequence === '\x1b[201~' || str === '\x1b[200~' || str === '\x1b[201~') {
+          return;
+        }
+
+        // Ignore mouse reporting escape sequences or terminal status responses in keypress
+        if (
+          key.sequence?.startsWith('\x1b[<') ||
+          key.sequence?.includes('<') ||
+          str?.startsWith('\x1b[<') ||
+          str?.includes('<') ||
+          (str && !isBracketedPasting && /^[0-9;]+[Mm]$/.test(str))
+        ) {
           return;
         }
 
@@ -1334,15 +1342,15 @@ export class TuiPrompt {
             render();
             return;
           }
-          cleanup();
-          process.stdout.write('\x1b[0 q\x1b[?2004l\x1b[2J\x1b[3J\x1b[H\x1b[?25h');
-          process.exit(0);
+          this.addHistory(chalk.dim('(To exit, use /exit)'));
+          render();
+          return;
         }
 
         if (key.ctrl && key.name === 'd') {
-          cleanup();
-          process.stdout.write('\x1b[0 q\x1b[?2004l\x1b[2J\x1b[3J\x1b[H\x1b[?25h');
-          process.exit(0);
+          this.addHistory(chalk.dim('(To exit, use /exit)'));
+          render();
+          return;
         }
 
         if (key.name === 'escape') {
@@ -1352,18 +1360,28 @@ export class TuiPrompt {
             selectedIndex = 0;
             historyIndex = -1;
             render();
+          } else if (this.scrollOffset > 0) {
+            this.scrollOffset = 0;
+            render();
           }
           return;
         }
 
-        if (key.name === 'pageup') {
-          const maxScroll = Math.max(0, this.history.length + this.liveLines.length - 5);
-          this.scrollOffset = Math.min(maxScroll, this.scrollOffset + 6);
+        const totalHistory = this.history.length + this.liveLines.length;
+        const maxScroll = Math.max(0, totalHistory - 3);
+
+        // Shift+Up: scroll up history viewport
+        const isShiftUp = (key.name === 'up' && key.shift) || key.sequence === '\x1b[1;2A';
+        if (isShiftUp) {
+          this.scrollOffset = Math.min(maxScroll, this.scrollOffset + 3);
           render();
           return;
         }
-        if (key.name === 'pagedown') {
-          this.scrollOffset = Math.max(0, this.scrollOffset - 6);
+
+        // Shift+Down: scroll down history viewport
+        const isShiftDown = (key.name === 'down' && key.shift) || key.sequence === '\x1b[1;2B';
+        if (isShiftDown) {
+          this.scrollOffset = Math.max(0, this.scrollOffset - 3);
           render();
           return;
         }
@@ -1537,6 +1555,10 @@ export class TuiPrompt {
         }
 
         if (str && !key.ctrl && !key.meta && !str.startsWith('\x1b') && !str.includes('\x1b')) {
+          // Guard against stray mouse/terminal escape sequences or semicolons
+          if (!isBracketedPasting && (/^[0-9;]+[Mm]$/.test(str) || (str.length > 2 && str.includes(';') && /[A-Za-z]$/.test(str)))) {
+            return;
+          }
           buffer = buffer.slice(0, cursorIndex) + str + buffer.slice(cursorIndex);
           cursorIndex += str.length;
           selectedIndex = 0;

@@ -2,6 +2,18 @@ import path from 'path';
 import os from 'os';
 import { QingmeiConfig } from './types.js';
 
+export function getQingmeiHome(): string {
+  return process.env.QINGMEI_HOME || path.join(os.homedir(), '.qingmei');
+}
+
+export function getConfigPath(): string {
+  return process.env.QINGMEI_CONFIG_PATH || path.join(getQingmeiHome(), 'config.json');
+}
+
+export function getMcpConfigPath(): string {
+  return path.join(getQingmeiHome(), 'mcp.json');
+}
+
 export const QINGMEI_HOME = path.join(os.homedir(), '.qingmei');
 export const CONFIG_PATH = path.join(QINGMEI_HOME, 'config.json');
 export const MCP_CONFIG_PATH = path.join(QINGMEI_HOME, 'mcp.json');

@@ -10,23 +10,31 @@ import {
   QingmeiConfigSchema,
 } from './types.js';
 import {
+  QINGMEI_HOME,
   CONFIG_PATH,
   MCP_CONFIG_PATH,
-  GLOBAL_INSTRUCTIONS_PATH,
-  QINGMEI_HOME,
   SKILLS_DIR,
   SESSIONS_DIR,
+  EXPORT_DIR,
+  GLOBAL_INSTRUCTIONS_PATH,
   SUPPORTED_PROVIDERS,
   DEFAULT_PRESET_CONFIG,
   ProviderDefinition,
+  getConfigPath,
+  getMcpConfigPath,
+  getQingmeiHome,
 } from './defaults.js';
 import { parseModelMetadataFromId } from '../core/llm/client.js';
 
 
 export function ensureQingmeiEnvironment(): void {
-  // 1. Create root and subdirectories
-  if (!fs.existsSync(QINGMEI_HOME)) {
-    fs.mkdirSync(QINGMEI_HOME, { recursive: true });
+  const homeDir = getQingmeiHome();
+  const configPath = getConfigPath();
+  const mcpPath = getMcpConfigPath();
+
+  // 1. Create directory structure if missing
+  if (!fs.existsSync(homeDir)) {
+    fs.mkdirSync(homeDir, { recursive: true });
   }
   if (!fs.existsSync(SKILLS_DIR)) {
     fs.mkdirSync(SKILLS_DIR, { recursive: true });
@@ -36,17 +44,17 @@ export function ensureQingmeiEnvironment(): void {
   }
 
   // 2. Initialize default config.json with all preset providers and models if missing
-  if (!fs.existsSync(CONFIG_PATH)) {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULT_PRESET_CONFIG, null, 2), 'utf-8');
+  if (!fs.existsSync(configPath)) {
+    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_PRESET_CONFIG, null, 2), 'utf-8');
   }
 
   // 3. Initialize default mcp.json if missing
-  if (!fs.existsSync(MCP_CONFIG_PATH)) {
+  if (!fs.existsSync(mcpPath)) {
     const defaultMcpConfig = {
       $schema: 'https://qingmei.ai/schemas/mcp.json',
       mcpServers: {},
     };
-    fs.writeFileSync(MCP_CONFIG_PATH, JSON.stringify(defaultMcpConfig, null, 2), 'utf-8');
+    fs.writeFileSync(mcpPath, JSON.stringify(defaultMcpConfig, null, 2), 'utf-8');
   }
 
   // 4. Initialize default QINGMEI.md if missing
@@ -66,10 +74,11 @@ export const ensureQingmeiDirectories = ensureQingmeiEnvironment;
 
 export function loadRawConfigFile(): QingmeiConfig | null {
   try {
-    if (!fs.existsSync(CONFIG_PATH)) {
+    const configPath = getConfigPath();
+    if (!fs.existsSync(configPath)) {
       return null;
     }
-    const content = fs.readFileSync(CONFIG_PATH, 'utf-8');
+    const content = fs.readFileSync(configPath, 'utf-8');
     const parsed = JSON.parse(content);
     return QingmeiConfigSchema.parse(parsed);
   } catch {
@@ -79,16 +88,17 @@ export function loadRawConfigFile(): QingmeiConfig | null {
 
 export function openConfigFileInEditor(): { success: boolean; editorName: string; path: string } {
   ensureQingmeiEnvironment();
+  const configPath = getConfigPath();
   const editor = process.env.EDITOR || process.env.VISUAL || (process.platform === 'darwin' ? 'open' : 'nano');
   try {
     if (editor === 'open') {
-      spawnSync('open', ['-t', CONFIG_PATH], { stdio: 'inherit' });
+      spawnSync('open', ['-t', configPath], { stdio: 'inherit' });
     } else {
-      spawnSync(editor, [CONFIG_PATH], { stdio: 'inherit' });
+      spawnSync(editor, [configPath], { stdio: 'inherit' });
     }
-    return { success: true, editorName: editor, path: CONFIG_PATH };
+    return { success: true, editorName: editor, path: configPath };
   } catch {
-    return { success: false, editorName: editor, path: CONFIG_PATH };
+    return { success: false, editorName: editor, path: configPath };
   }
 }
 
@@ -106,19 +116,23 @@ export function getEffectiveProviderConfig(
   const presetProv = DEFAULT_PRESET_CONFIG.providers[providerId] || {};
 
   let apiKey = fileProviderConfig.apiKey;
-  let baseUrl = fileProviderConfig.baseUrl || def?.defaultBaseUrl || presetProv.baseUrl;
+  if (def?.apiKeyEnvName && process.env[def.apiKeyEnvName]) {
+    apiKey = process.env[def.apiKeyEnvName];
+  }
+
+  let baseUrl = fileProviderConfig.baseUrl;
+  if (def?.baseUrlEnvName && process.env[def.baseUrlEnvName]) {
+    baseUrl = process.env[def.baseUrlEnvName];
+  }
+  if (!baseUrl) {
+    baseUrl = def?.defaultBaseUrl || presetProv.baseUrl;
+  }
+
   let defaultModel = fileProviderConfig.defaultModel || presetProv.defaultModel || '';
   let models =
     fileProviderConfig.models && fileProviderConfig.models.length > 0
       ? fileProviderConfig.models
       : presetProv.models || [];
-
-  if (def?.apiKeyEnvName && process.env[def.apiKeyEnvName]) {
-    apiKey = process.env[def.apiKeyEnvName];
-  }
-  if (def?.baseUrlEnvName && process.env[def.baseUrlEnvName]) {
-    baseUrl = process.env[def.baseUrlEnvName];
-  }
 
   return {
     apiKey,
@@ -206,7 +220,8 @@ export function saveConfig(updates: Partial<QingmeiConfig>): QingmeiConfig {
         : (existing.trustedWorkspaces || []),
   };
 
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2), 'utf-8');
+  const configPath = getConfigPath();
+  fs.writeFileSync(configPath, JSON.stringify(merged, null, 2), 'utf-8');
   return loadConfig();
 }
 
@@ -327,15 +342,20 @@ export function maskApiKey(key?: string): string {
 }
 
 export function setProviderApiKey(providerId: string, apiKey: string, baseUrl?: string): QingmeiConfig {
-  const conf = loadConfig();
+  const cleanKey = apiKey.trim();
   const def = getProviderDefinition(providerId);
+  if (def?.apiKeyEnvName) {
+    process.env[def.apiKeyEnvName] = cleanKey;
+  }
+
+  const conf = loadConfig();
   const prov = conf.providers[providerId] || {};
 
   const updatedProviders = {
     ...conf.providers,
     [providerId]: {
       ...prov,
-      apiKey: apiKey.trim(),
+      apiKey: cleanKey,
       baseUrl: baseUrl || prov.baseUrl || def?.defaultBaseUrl || 'https://api.openai.com/v1',
     },
   };
@@ -348,6 +368,11 @@ export function setProviderApiKey(providerId: string, apiKey: string, baseUrl?: 
 }
 
 export function removeProviderApiKey(providerId: string): QingmeiConfig {
+  const def = getProviderDefinition(providerId);
+  if (def?.apiKeyEnvName) {
+    delete process.env[def.apiKeyEnvName];
+  }
+
   const conf = loadConfig();
   const prov = conf.providers[providerId] || {};
 
