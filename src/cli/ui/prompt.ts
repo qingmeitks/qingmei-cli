@@ -157,6 +157,59 @@ export function truncateAnsi(str: string, maxVisualWidth: number): string {
   return result + '\x1b[0m';
 }
 
+export function extractAnsiRange(str: string, startCol: number, endCol: number): string {
+  if (startCol >= endCol || !str) return '';
+  let curCol = 0;
+  let result = '';
+  let activeEscapes = '';
+
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '\x1b') {
+      let esc = '';
+      while (i < str.length && str[i] !== 'm' && !str[i].match(/[a-zA-Z]/)) {
+        esc += str[i];
+        i++;
+      }
+      if (i < str.length) esc += str[i];
+      if (esc === '\x1b[0m') {
+        activeEscapes = '';
+      } else {
+        activeEscapes += esc;
+      }
+      if (curCol >= startCol && curCol < endCol) {
+        result += esc;
+      }
+      continue;
+    }
+
+    const char = str[i];
+    const charW = getCharWidth(char);
+
+    if (curCol >= endCol) {
+      break;
+    }
+
+    if (curCol >= startCol) {
+      if (result.length === 0 && activeEscapes) {
+        result += activeEscapes;
+      }
+      if (curCol + charW <= endCol) {
+        result += char;
+      } else {
+        result += ' '.repeat(endCol - curCol);
+        curCol = endCol;
+        break;
+      }
+    } else if (curCol + charW > startCol) {
+      result += ' '.repeat(curCol + charW - startCol);
+    }
+
+    curCol += charW;
+  }
+
+  return result ? result + '\x1b[0m' : '';
+}
+
 function formatRelativePath(fullPath: string): string {
   const home = os.homedir();
   if (fullPath === home) {
@@ -763,7 +816,11 @@ export class TuiPrompt {
         const modalLine = modalRows[i];
         const modalW = getStringWidth(modalLine);
         const leftSpace = Math.max(0, Math.floor((contentWidth - modalW) / 2));
-        middleLines[startInject + i] = formatRow(`${' '.repeat(leftSpace)}${modalLine}`);
+        const bgLine = middleLines[startInject + i] || '';
+        const leftBg = extractAnsiRange(bgLine, 0, leftSpace);
+        const leftPad = ' '.repeat(Math.max(0, leftSpace - getStringWidth(leftBg)));
+        const rightBg = extractAnsiRange(bgLine, leftSpace + modalW, contentWidth);
+        middleLines[startInject + i] = formatRow(`${leftBg}${leftPad}${modalLine}${rightBg}`);
       }
     } else {
       // Check @mention overlay

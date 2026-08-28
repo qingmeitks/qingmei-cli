@@ -142,6 +142,25 @@ describe('TuiPrompt & Slash Command Suggestions', () => {
       process.stdin.isTTY = originalIsTTY;
     }
   });
+
+  it('should extract ANSI range preserving color and slicing accurately for floating overlay', async () => {
+    const { extractAnsiRange, getStringWidth } = await import('../../src/cli/ui/prompt.js');
+
+    const str = '\x1b[33m* sess_20260828_12345 - 0 msgs, ~3737 tokens\x1b[0m';
+    const left = extractAnsiRange(str, 0, 10);
+    expect(getStringWidth(left)).toBe(10);
+    expect(left).toContain('\x1b[33m');
+
+    const right = extractAnsiRange(str, 20, 40);
+    expect(getStringWidth(right)).toBe(20);
+    expect(right).toContain('msgs');
+
+    // CJK characters range slicing
+    const cjk = '你好世界，青袂助手测试';
+    const cjkSliced = extractAnsiRange(cjk, 0, 8); // 4 CJK chars
+    expect(getStringWidth(cjkSliced)).toBe(8);
+    expect(cjkSliced).toContain('你好世界');
+  });
 });
 
 
