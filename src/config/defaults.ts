@@ -161,24 +161,6 @@ export const DEFAULT_PRESET_CONFIG: QingmeiConfig = {
       defaultModel: 'gemini-3.7-flash',
       models: [
         {
-          id: 'gemini-3.5-flash',
-          name: 'gemini-3.5-flash',
-          context: '1M',
-          contextWindow: 1000000,
-          is1MContext: true,
-          supportsTools: true,
-          supportsReasoning: false,
-        },
-        {
-          id: 'gemini-3.5-flash-lite',
-          name: 'gemini-3.5-flash-lite',
-          context: '1M',
-          contextWindow: 1000000,
-          is1MContext: true,
-          supportsTools: true,
-          supportsReasoning: false,
-        },
-        {
           id: 'gemini-3.6-flash',
           name: 'gemini-3.6-flash',
           context: '1M',

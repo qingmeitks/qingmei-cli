@@ -235,8 +235,6 @@ describe('Config Loader & Model Metadata', () => {
 
     const geminiModels = getProviderModels('gemini', DEFAULT_PRESET_CONFIG);
     expect(geminiModels.map((m) => m.id)).toEqual([
-      'gemini-3.5-flash',
-      'gemini-3.5-flash-lite',
       'gemini-3.6-flash',
       'gemini-3.7-flash',
       'gemini-3.1-pro-preview',
@@ -244,8 +242,6 @@ describe('Config Loader & Model Metadata', () => {
     expect(geminiModels[0].is1MContext).toBe(true);
     expect(geminiModels[1].is1MContext).toBe(true);
     expect(geminiModels[2].is1MContext).toBe(true);
-    expect(geminiModels[3].is1MContext).toBe(true);
-    expect(geminiModels[4].is1MContext).toBe(true);
 
     const openaiModels = getProviderModels('openai', DEFAULT_PRESET_CONFIG);
     expect(openaiModels.map((m) => m.id)).toEqual([

@@ -32,10 +32,10 @@
   - **`[readonly]`**：严格只读分析模式，物理拦截所有文件修改与 Shell 执行请求。
   - **`[chat]`**：**纯对话模式**，禁用并剔除所有 Tool Schema，零 Token 开销，极速响应，杜绝模型幻觉调用工具。
 - **超大上下文感知 (1M Context Aware)**：
-  - 精准识别 1M+ 超长上下文模型（如 DeepSeek-V4 系列、Gemini 3.7 / 3.5 系列），动态调整 Token 预算分配与长上下文提示。
+  - 精准识别 1M+ 超长上下文模型（如 DeepSeek-V4 系列、Gemini 3.7 / 3.6 系列），动态调整 Token 预算分配与长上下文提示。
 - **精准厂商预设 (Curated Presets)**：
   - **DeepSeek**：预设 `deepseek-v4-flash`（1M 上下文、支持推理与工具）与 `deepseek-v4-pro`（1M 上下文、支持工具）。
-  - **Google Gemini**：预设 `gemini-3.5-flash`、`gemini-3.5-flash-lite`、`gemini-3.6-flash`、`gemini-3.7-flash`（1M 上下文、支持推理与工具）与 `gemini-3.1-pro-preview`（1M 上下文）。
+  - **Google Gemini**：预设 `gemini-3.6-flash`、`gemini-3.7-flash`（1M 上下文、支持推理与工具）与 `gemini-3.1-pro-preview`（1M 上下文）。
   - **OpenAI**：预设 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.5`（1M 上下文、支持推理与工具）与 `gpt-5.4-mini`（1M 上下文、支持工具）。
   - **GLM / 智谱 AI**：预设 `GLM-5.3-Flash`（1M 上下文、支持推理与工具）、`GLM-5.3`、`GLM-5.2`（1M 上下文）。
   - **Grok / xAI**：预设 `grok-4.6`（1M 上下文、支持推理与工具）、`grok-4.5`（1M 上下文、支持推理与工具）、`grok-4.3`（1M 上下文）。

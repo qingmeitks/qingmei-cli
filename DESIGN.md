@@ -280,7 +280,7 @@ All official presets support 1M+ context windows with automated Prompt Cache hit
 | Provider | ID | Default Model | Presets | Environment Variables |
 | :--- | :--- | :--- | :--- | :--- |
 | **DeepSeek** | `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash`, `deepseek-v4-pro` | `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL` |
-| **Google Gemini** | `gemini` | `gemini-3.7-flash` | `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-3.7-flash`, `gemini-3.1-pro-preview` | `GEMINI_API_KEY`, `GEMINI_BASE_URL` |
+| **Google Gemini** | `gemini` | `gemini-3.7-flash` | `gemini-3.6-flash`, `gemini-3.7-flash`, `gemini-3.1-pro-preview` | `GEMINI_API_KEY`, `GEMINI_BASE_URL` |
 | **OpenAI** | `openai` | `gpt-5.6-sol` | `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini` | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
 | **GLM / Zhipu AI** | `glm` | `GLM-5.3-Flash` | `GLM-5.3-Flash`, `GLM-5.3`, `GLM-5.2` | `ZHIPU_API_KEY`, `ZHIPU_BASE_URL` |
 | **Grok / xAI** | `grok` | `grok-4.6` | `grok-4.6`, `grok-4.5`, `grok-4.3` | `XAI_API_KEY`, `XAI_BASE_URL` |
