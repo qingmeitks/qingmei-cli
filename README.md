@@ -1,7 +1,7 @@
 # Qingmei (青袂) - Minimalist Modern TypeScript Agent CLI
 
 <p align="center">
-  <b>English</b> | <a href="README.zh-CN.md">简体中文</a> | <a href="CHANGELOG.md">Changelog</a>
+  <b>English</b> | <a href="README.zh-CN.md">简体中文</a> | <a href="DESIGN.md">Architecture & Design</a> | <a href="CHANGELOG.md">Changelog</a>
 </p>
 
 ---

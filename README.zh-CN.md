@@ -1,7 +1,7 @@
 # Qingmei (青袂) - 极简现代化 TypeScript Agent CLI
 
 <p align="center">
-  <a href="README.md">English</a> | <b>简体中文</b> | <a href="CHANGELOG.zh-CN.md">更新日志</a>
+  <a href="README.md">English</a> | <b>简体中文</b> | <a href="DESIGN.zh-CN.md">架构设计</a> | <a href="CHANGELOG.zh-CN.md">更新日志</a>
 </p>
 
 ---
