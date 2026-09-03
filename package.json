@@ -1,6 +1,6 @@
 {
   "name": "@qingmeitks/cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Adaptive, Lightweight, and Multi-Session Agentic AI CLI with 1M+ Context, Zero Pollution, and MCP/Skills Extensibility",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -30,7 +30,6 @@
   "bugs": {
     "url": "https://github.com/qingmeitks/qingmei-cli/issues"
   },
-
   "scripts": {
     "dev": "tsx bin/qingmei.ts",
     "build": "tsup",

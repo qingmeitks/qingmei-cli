@@ -13,6 +13,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.3] - 2026-09-03
+
+### Added
+- **Anthropic Claude Provider (New)**:
+  - Official support for Anthropic Claude via OpenAI-compatible endpoint (`https://api.anthropic.com/v1`).
+  - Presets: `claude-sonnet-4-6` (default, 1M context, tools + reasoning) and `claude-opus-4-6` (1M context, tools + reasoning).
+  - Configure via `ANTHROPIC_API_KEY` / `ANTHROPIC_BASE_URL`.
+- **Gemini 3.8 Flash Preset**:
+  - Added `gemini-3.8-flash` as the new default Google Gemini model (1M context, tools + reasoning).
+- **Qwen 3.7 Max Preset**:
+  - Added `qwen3.7-max` (1M context, tools + reasoning) to the Qwen / DashScope preset lineup.
+- **System Design Documents**:
+  - Published `DESIGN.md` and `DESIGN.zh-CN.md` with full architecture diagrams, provider matrix, and component specifications.
+
+### Changed
+- **Google Gemini Preset Cleanup**:
+  - Removed deprecated `gemini-3.5-flash` and `gemini-3.5-flash-lite` presets. Active preset lineup: `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.1-pro-preview`.
+  - Updated default Gemini model from `gemini-3.7-flash` to `gemini-3.8-flash`.
+
+---
+
 ## [0.1.2] - 2026-08-28
 
 ### Added

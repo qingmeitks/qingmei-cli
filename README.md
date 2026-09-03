@@ -41,7 +41,7 @@
   - **GLM / Zhipu AI**: Pre-configured with `GLM-5.3-Flash` (1M context, tools + reasoning), `GLM-5.3`, and `GLM-5.2` (1M context).
   - **Grok / xAI**: Pre-configured with `grok-4.6` (1M context, tools + reasoning), `grok-4.5` (1M context, tools + reasoning), and `grok-4.3` (1M context).
   - **Qwen / DashScope**: Pre-configured with `qwen3.8-max` (1M context, tools + reasoning), `qwen3.8-flash` (1M context, tools + reasoning), `qwen3.7-max` (1M context, tools + reasoning), `qwen3.7-plus`, and `qwen3.7-flash` (1M context).
-- **Prompt Cache Hit Rate & Token Usage Tracker (v0.1.2)**:
+- **Prompt Cache Hit Rate & Token Usage Tracker**:
   - Automatically captures server-side KV Cache / Prompt Cache metrics per request and outputs low-intrusion stats beneath replies (e.g. `[1.4s | in: 1,200 (cached: 1,000, 83.3%) | out: 300]`).
   - Dedicated `/usage` (token billing and cache savings) and `/stats` (session diagnostics and tool execution matrix) commands.
   - Redesigned exit summary card with cyan `QINGMEI` block wordmark and clean multi-line resource breakdown.
