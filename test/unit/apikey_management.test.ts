@@ -245,7 +245,7 @@ describe('API Key Management & Security', () => {
       expect(config.providers.gemini.apiKey).toBe('AIza-new-gemini-key-9999');
       expect(config.activeProvider).toBe('gemini');
       expect(agent.activeModel.provider).toBe('gemini');
-      expect(agent.activeModel.id).toBe('gemini-3.7-flash');
+      expect(agent.activeModel.id).toBe('gemini-3.8-flash');
     });
 
     it('handles updating non-active provider with select_model option', async () => {

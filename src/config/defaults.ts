@@ -158,16 +158,16 @@ export const DEFAULT_PRESET_CONFIG: QingmeiConfig = {
     gemini: {
       apiKey: '',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-      defaultModel: 'gemini-3.7-flash',
+      defaultModel: 'gemini-3.8-flash',
       models: [
         {
-          id: 'gemini-3.6-flash',
-          name: 'gemini-3.6-flash',
+          id: 'gemini-3.8-flash',
+          name: 'gemini-3.8-flash',
           context: '1M',
           contextWindow: 1000000,
           is1MContext: true,
           supportsTools: true,
-          supportsReasoning: false,
+          supportsReasoning: true,
         },
         {
           id: 'gemini-3.7-flash',
@@ -177,6 +177,15 @@ export const DEFAULT_PRESET_CONFIG: QingmeiConfig = {
           is1MContext: true,
           supportsTools: true,
           supportsReasoning: true,
+        },
+        {
+          id: 'gemini-3.6-flash',
+          name: 'gemini-3.6-flash',
+          context: '1M',
+          contextWindow: 1000000,
+          is1MContext: true,
+          supportsTools: true,
+          supportsReasoning: false,
         },
         {
           id: 'gemini-3.1-pro-preview',
