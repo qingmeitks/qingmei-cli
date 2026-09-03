@@ -12,6 +12,27 @@
 
 ---
 
+## [0.1.3] - 2026-09-03
+
+### 新增特性 (Added)
+- **新增 Anthropic Claude 厂商预设**：
+  - 正式支持 Anthropic Claude，通过 OpenAI 兼容接口接入（`https://api.anthropic.com/v1`）。
+  - 预设 `claude-sonnet-4-6`（默认，1M 上下文、支持推理与工具）与 `claude-opus-4-6`（1M 上下文、支持推理与工具）。
+  - 通过 `ANTHROPIC_API_KEY` / `ANTHROPIC_BASE_URL` 配置。
+- **新增 Gemini 3.8 Flash 预设**：
+  - 新增 `gemini-3.8-flash` 并设为 Google Gemini 默认模型（1M 上下文、支持推理与工具）。
+- **新增通义千问 qwen3.7-max 预设**：
+  - Qwen / DashScope 预设模型列表新增 `qwen3.7-max`（1M 上下文、支持推理与工具）。
+- **系统设计文档**：
+  - 发布 `DESIGN.md` 与 `DESIGN.zh-CN.md`，包含完整架构图、厂商预设矩阵与组件规范。
+
+### 体验优化 (Changed)
+- **Google Gemini 预设精简**：
+  - 移除已过时的 `gemini-3.5-flash` 与 `gemini-3.5-flash-lite` 预设。当前预设列表：`gemini-3.8-flash`、`gemini-3.7-flash`、`gemini-3.6-flash`、`gemini-3.1-pro-preview`。
+  - 默认 Gemini 模型由 `gemini-3.7-flash` 升级为 `gemini-3.8-flash`。
+
+---
+
 ## [0.1.2] - 2026-08-28
 
 ### 新增特性 (Added)

@@ -1,7 +1,7 @@
 # Qingmei (青袂) - Minimalist Modern TypeScript Agent CLI
 
 <p align="center">
-  <b>English</b> | <a href="README.zh-CN.md">简体中文</a> | <a href="CHANGELOG.md">Changelog</a>
+  <b>English</b> | <a href="README.zh-CN.md">简体中文</a> | <a href="DESIGN.md">Architecture & Design</a> | <a href="CHANGELOG.md">Changelog</a>
 </p>
 
 ---
@@ -32,15 +32,16 @@
   - **`[readonly]`**: Strictly read-only analysis; file modifications and command execution are physically blocked.
   - **`[chat]`**: **Pure conversation mode**; disables and removes all tool schemas for zero token overhead, ultra-fast responses, and no tool hallucination.
 - **1M Context Awareness**:
-  - Automatically identifies 1M+ context models (DeepSeek-V4 series, Gemini 3.7 / 3.5 series) and dynamically scales token budgeting and prompt strategies.
+  - Automatically identifies 1M+ context models (DeepSeek-V4 series, Gemini 3.8 / 3.7 / 3.6 series) and dynamically scales token budgeting and prompt strategies.
 - **Curated Model Presets**:
   - **DeepSeek**: Pre-configured with `deepseek-v4-flash` (1M context, tools + reasoning) and `deepseek-v4-pro` (1M context, tools).
-  - **Google Gemini**: Pre-configured with `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-3.7-flash` (1M context, tools + reasoning), and `gemini-3.1-pro-preview` (1M context).
+  - **Google Gemini**: Pre-configured with `gemini-3.8-flash` (1M context, tools + reasoning), `gemini-3.7-flash` (1M context, tools + reasoning), `gemini-3.6-flash` (1M context, tools), and `gemini-3.1-pro-preview` (1M context).
+  - **Anthropic Claude**: Pre-configured with `claude-sonnet-4-6` (1M context, tools + reasoning) and `claude-opus-4-6` (1M context, tools + reasoning).
   - **OpenAI**: Pre-configured with `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5` (1M context, tools + reasoning), and `gpt-5.4-mini` (1M context, tools).
   - **GLM / Zhipu AI**: Pre-configured with `GLM-5.3-Flash` (1M context, tools + reasoning), `GLM-5.3`, and `GLM-5.2` (1M context).
   - **Grok / xAI**: Pre-configured with `grok-4.6` (1M context, tools + reasoning), `grok-4.5` (1M context, tools + reasoning), and `grok-4.3` (1M context).
-  - **Qwen / DashScope**: Pre-configured with `qwen3.8-max` (1M context, tools + reasoning), `qwen3.8-flash` (1M context, tools + reasoning), `qwen3.7-plus`, and `qwen3.7-flash` (1M context).
-- **Prompt Cache Hit Rate & Token Usage Tracker (v0.1.2)**:
+  - **Qwen / DashScope**: Pre-configured with `qwen3.8-max` (1M context, tools + reasoning), `qwen3.8-flash` (1M context, tools + reasoning), `qwen3.7-max` (1M context, tools + reasoning), `qwen3.7-plus`, and `qwen3.7-flash` (1M context).
+- **Prompt Cache Hit Rate & Token Usage Tracker**:
   - Automatically captures server-side KV Cache / Prompt Cache metrics per request and outputs low-intrusion stats beneath replies (e.g. `[1.4s | in: 1,200 (cached: 1,000, 83.3%) | out: 300]`).
   - Dedicated `/usage` (token billing and cache savings) and `/stats` (session diagnostics and tool execution matrix) commands.
   - Redesigned exit summary card with cyan `QINGMEI` block wordmark and clean multi-line resource breakdown.

@@ -245,7 +245,7 @@ describe('API Key Management & Security', () => {
       expect(config.providers.gemini.apiKey).toBe('AIza-new-gemini-key-9999');
       expect(config.activeProvider).toBe('gemini');
       expect(agent.activeModel.provider).toBe('gemini');
-      expect(agent.activeModel.id).toBe('gemini-3.7-flash');
+      expect(agent.activeModel.id).toBe('gemini-3.8-flash');
     });
 
     it('handles updating non-active provider with select_model option', async () => {
@@ -253,17 +253,17 @@ describe('API Key Management & Security', () => {
         success: true,
         latencyMs: 25,
       });
-      // First selectModal: pick 'select_model', Second selectModal: pick 'gemini-3.5-flash-lite'
+      // First selectModal: pick 'select_model', Second selectModal: pick 'gemini-3.6-flash'
       vi.spyOn(tuiPrompt, 'selectModal')
         .mockResolvedValueOnce('select_model')
-        .mockResolvedValueOnce('gemini-3.5-flash-lite');
+        .mockResolvedValueOnce('gemini-3.6-flash');
 
       await handleKeyCommand('gemini AIza-new-gemini-key-8888', agent, tuiPrompt);
 
       const config = loadConfig();
       expect(config.providers.gemini.apiKey).toBe('AIza-new-gemini-key-8888');
       expect(config.activeProvider).toBe('gemini');
-      expect(agent.activeModel.id).toBe('gemini-3.5-flash-lite');
+      expect(agent.activeModel.id).toBe('gemini-3.6-flash');
     });
 
     it('handles updating non-active provider with stay option', async () => {

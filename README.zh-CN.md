@@ -1,7 +1,7 @@
 # Qingmei (青袂) - 极简现代化 TypeScript Agent CLI
 
 <p align="center">
-  <a href="README.md">English</a> | <b>简体中文</b> | <a href="CHANGELOG.zh-CN.md">更新日志</a>
+  <a href="README.md">English</a> | <b>简体中文</b> | <a href="DESIGN.zh-CN.md">架构设计</a> | <a href="CHANGELOG.zh-CN.md">更新日志</a>
 </p>
 
 ---
@@ -32,15 +32,16 @@
   - **`[readonly]`**：严格只读分析模式，物理拦截所有文件修改与 Shell 执行请求。
   - **`[chat]`**：**纯对话模式**，禁用并剔除所有 Tool Schema，零 Token 开销，极速响应，杜绝模型幻觉调用工具。
 - **超大上下文感知 (1M Context Aware)**：
-  - 精准识别 1M+ 超长上下文模型（如 DeepSeek-V4 系列、Gemini 3.7 / 3.5 系列），动态调整 Token 预算分配与长上下文提示。
+  - 精准识别 1M+ 超长上下文模型（如 DeepSeek-V4 系列、Gemini 3.8 / 3.7 / 3.6 系列），动态调整 Token 预算分配与长上下文提示。
 - **精准厂商预设 (Curated Presets)**：
   - **DeepSeek**：预设 `deepseek-v4-flash`（1M 上下文、支持推理与工具）与 `deepseek-v4-pro`（1M 上下文、支持工具）。
-  - **Google Gemini**：预设 `gemini-3.5-flash`、`gemini-3.5-flash-lite`、`gemini-3.6-flash`、`gemini-3.7-flash`（1M 上下文、支持推理与工具）与 `gemini-3.1-pro-preview`（1M 上下文）。
+  - **Google Gemini**：预设 `gemini-3.8-flash`（1M 上下文、支持推理与工具）、`gemini-3.7-flash`（1M 上下文、支持推理与工具）、`gemini-3.6-flash`（1M 上下文、支持工具）与 `gemini-3.1-pro-preview`（1M 上下文）。
+  - **Anthropic Claude**：预设 `claude-sonnet-4-6`（1M 上下文、支持推理与工具）与 `claude-opus-4-6`（1M 上下文、支持推理与工具）。
   - **OpenAI**：预设 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.5`（1M 上下文、支持推理与工具）与 `gpt-5.4-mini`（1M 上下文、支持工具）。
   - **GLM / 智谱 AI**：预设 `GLM-5.3-Flash`（1M 上下文、支持推理与工具）、`GLM-5.3`、`GLM-5.2`（1M 上下文）。
   - **Grok / xAI**：预设 `grok-4.6`（1M 上下文、支持推理与工具）、`grok-4.5`（1M 上下文、支持推理与工具）、`grok-4.3`（1M 上下文）。
-  - **Qwen / 通义千问**：预设 `qwen3.8-max`（1M 上下文、支持推理与工具）、`qwen3.8-flash`（1M 上下文、支持推理与工具）、`qwen3.7-plus`、`qwen3.7-flash`（1M 上下文）。
-- **Token 消耗与 Prompt Cache 命中率统计 (v0.1.2)**：
+  - **Qwen / 通义千问**：预设 `qwen3.8-max`（1M 上下文、支持推理与工具）、`qwen3.8-flash`（1M 上下文、支持推理与工具）、`qwen3.7-max`（1M 上下文、支持推理与工具）、`qwen3.7-plus`、`qwen3.7-flash`（1M 上下文）。
+- **Token 消耗与 Prompt Cache 命中率统计**：
   - 自动捕获各模型服务端 KV Cache / Prompt Cache 命中数据，单轮生成后输出低侵入式耗时与缓存指标（如 `[1.4s | in: 1,200 (cached: 1,000, 83.3%) | out: 300]`）。
   - 专属 `/usage`（Token 账单与缓存节省分析）与 `/stats`（会话全景活动与工具执行诊断）命令。
   - 优雅退出总结卡片：呈现青色 `QINGMEI` 点阵文字图标与整洁分行的资源消耗总结。

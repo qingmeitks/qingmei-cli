@@ -232,6 +232,12 @@ export function parseModelMetadataFromId(
     ) {
       contextWindow = 1000000;
       hasExplicitContext = true;
+    } else if (
+      lower.includes('claude')
+    ) {
+      // Claude 4.x series: 1M context window
+      contextWindow = 1000000;
+      hasExplicitContext = true;
     }
   }
 
@@ -518,9 +524,9 @@ export class LLMClient {
       (this.config.provider === 'deepseek'
         ? 'deepseek-v4-flash'
         : this.config.provider === 'gemini'
-        ? 'gemini-3.7-flash'
+        ? 'gemini-3.8-flash'
         : this.config.provider === 'anthropic'
-        ? 'claude-3-7-sonnet-latest'
+        ? 'claude-sonnet-4-6'
         : this.config.provider === 'grok'
         ? 'grok-4.6'
         : this.config.provider === 'glm'

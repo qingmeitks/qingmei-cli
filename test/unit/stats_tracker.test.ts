@@ -188,7 +188,7 @@ describe('Text Formatters (Minimalist / No Emojis)', () => {
     const exitText = formatExitSummary(tracker.getActivitySummary());
     expect(exitText).not.toBeNull();
     expect(exitText).toContain('█▀█ █ █▄ █ █▀▀ █▀▄▀█ █▀▀ █');
-    expect(exitText).toContain('v0.1.2');
+    expect(exitText).toContain('v0.1.3');
     expect(exitText).toContain('Duration:   ');
     expect(exitText).toContain('Turns:      1');
     expect(exitText).toContain('Input:      5,000 (cached: 4,000, 80%)');
