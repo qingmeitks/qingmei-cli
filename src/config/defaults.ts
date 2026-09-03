@@ -88,15 +88,16 @@ export const SUPPORTED_PROVIDERS: ProviderDefinition[] = [
     requiresApiKey: true,
     is1MSupported: true,
   },
-  /* 待后续预设模型完善后再行开放
   {
     id: 'anthropic',
-    name: 'Anthropic',
+    name: 'Anthropic / Claude',
     defaultBaseUrl: 'https://api.anthropic.com/v1',
     apiKeyEnvName: 'ANTHROPIC_API_KEY',
     baseUrlEnvName: 'ANTHROPIC_BASE_URL',
     requiresApiKey: true,
+    is1MSupported: true,
   },
+  /* 待后续预设模型完善后再行开放
   {
     id: 'moonshot',
     name: 'Moonshot / Kimi (月之暗面)',
@@ -342,6 +343,15 @@ export const DEFAULT_PRESET_CONFIG: QingmeiConfig = {
           supportsReasoning: true,
         },
         {
+          id: 'qwen3.7-max',
+          name: 'qwen3.7-max',
+          context: '1M',
+          contextWindow: 1000000,
+          is1MContext: true,
+          supportsTools: true,
+          supportsReasoning: true,
+        },
+        {
           id: 'qwen3.7-plus',
           name: 'qwen3.7-plus',
           context: '1M',
@@ -361,13 +371,32 @@ export const DEFAULT_PRESET_CONFIG: QingmeiConfig = {
         },
       ],
     },
-    /* 待后续预设模型完善后再行开放
     anthropic: {
       apiKey: '',
       baseUrl: 'https://api.anthropic.com/v1',
-      defaultModel: '',
-      models: [],
+      defaultModel: 'claude-sonnet-4-6',
+      models: [
+        {
+          id: 'claude-sonnet-4-6',
+          name: 'claude-sonnet-4-6',
+          context: '1M',
+          contextWindow: 1000000,
+          is1MContext: true,
+          supportsTools: true,
+          supportsReasoning: true,
+        },
+        {
+          id: 'claude-opus-4-6',
+          name: 'claude-opus-4-6',
+          context: '1M',
+          contextWindow: 1000000,
+          is1MContext: true,
+          supportsTools: true,
+          supportsReasoning: true,
+        },
+      ],
     },
+    /* 待后续预设模型完善后再行开放
     moonshot: {
       apiKey: '',
       baseUrl: 'https://api.moonshot.cn/v1',

@@ -36,10 +36,11 @@
 - **精准厂商预设 (Curated Presets)**：
   - **DeepSeek**：预设 `deepseek-v4-flash`（1M 上下文、支持推理与工具）与 `deepseek-v4-pro`（1M 上下文、支持工具）。
   - **Google Gemini**：预设 `gemini-3.8-flash`（1M 上下文、支持推理与工具）、`gemini-3.7-flash`（1M 上下文、支持推理与工具）、`gemini-3.6-flash`（1M 上下文、支持工具）与 `gemini-3.1-pro-preview`（1M 上下文）。
+  - **Anthropic Claude**：预设 `claude-sonnet-4-6`（1M 上下文、支持推理与工具）与 `claude-opus-4-6`（1M 上下文、支持推理与工具）。
   - **OpenAI**：预设 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.5`（1M 上下文、支持推理与工具）与 `gpt-5.4-mini`（1M 上下文、支持工具）。
   - **GLM / 智谱 AI**：预设 `GLM-5.3-Flash`（1M 上下文、支持推理与工具）、`GLM-5.3`、`GLM-5.2`（1M 上下文）。
   - **Grok / xAI**：预设 `grok-4.6`（1M 上下文、支持推理与工具）、`grok-4.5`（1M 上下文、支持推理与工具）、`grok-4.3`（1M 上下文）。
-  - **Qwen / 通义千问**：预设 `qwen3.8-max`（1M 上下文、支持推理与工具）、`qwen3.8-flash`（1M 上下文、支持推理与工具）、`qwen3.7-plus`、`qwen3.7-flash`（1M 上下文）。
+  - **Qwen / 通义千问**：预设 `qwen3.8-max`（1M 上下文、支持推理与工具）、`qwen3.8-flash`（1M 上下文、支持推理与工具）、`qwen3.7-max`（1M 上下文、支持推理与工具）、`qwen3.7-plus`、`qwen3.7-flash`（1M 上下文）。
 - **Token 消耗与 Prompt Cache 命中率统计 (v0.1.2)**：
   - 自动捕获各模型服务端 KV Cache / Prompt Cache 命中数据，单轮生成后输出低侵入式耗时与缓存指标（如 `[1.4s | in: 1,200 (cached: 1,000, 83.3%) | out: 300]`）。
   - 专属 `/usage`（Token 账单与缓存节省分析）与 `/stats`（会话全景活动与工具执行诊断）命令。

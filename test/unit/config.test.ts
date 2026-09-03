@@ -128,14 +128,14 @@ describe('Config Loader & Model Metadata', () => {
     expect(getContextDisplayBadge(proMeta)).toBe('200k');
   });
 
-  it('should correctly identify 200k and 1M context models including future Claude 4.6 and Gemini 3.7', () => {
+  it('should correctly identify 1M context models including Claude 4.6 and Gemini 3.7', () => {
     const claudeMeta = getModelMetadata('claude-3-7-sonnet-latest', 'anthropic');
-    expect(claudeMeta.contextWindow).toBe(200000);
-    expect(getContextDisplayBadge(claudeMeta)).toBe('200k');
+    expect(claudeMeta.contextWindow).toBe(1000000);
+    expect(getContextDisplayBadge(claudeMeta)).toBe('1M');
 
     const claude46Meta = getModelMetadata('claude-4.6-sonnet', 'anthropic');
-    expect(claude46Meta.contextWindow).toBe(200000);
-    expect(getContextDisplayBadge(claude46Meta)).toBe('200k');
+    expect(claude46Meta.contextWindow).toBe(1000000);
+    expect(getContextDisplayBadge(claude46Meta)).toBe('1M');
 
     const gemini37Meta = getModelMetadata('gemini-3.7-flash', 'gemini');
     expect(gemini37Meta.is1MContext).toBe(true);
@@ -260,7 +260,11 @@ describe('Config Loader & Model Metadata', () => {
     expect(openaiModels[4].is1MContext).toBe(true);
 
     const anthropicModels = getProviderModels('anthropic', DEFAULT_PRESET_CONFIG);
-    expect(anthropicModels).toEqual([]);
+    expect(anthropicModels.map((m) => m.id)).toEqual(['claude-sonnet-4-6', 'claude-opus-4-6']);
+    expect(anthropicModels[0].is1MContext).toBe(true);
+    expect(anthropicModels[0].supportsReasoning).toBe(true);
+    expect(anthropicModels[1].is1MContext).toBe(true);
+    expect(anthropicModels[1].supportsReasoning).toBe(true);
 
     const grokModels = getProviderModels('grok', DEFAULT_PRESET_CONFIG);
     expect(grokModels.map((m) => m.id)).toEqual(['grok-4.6', 'grok-4.5', 'grok-4.3']);
@@ -274,6 +278,7 @@ describe('Config Loader & Model Metadata', () => {
     expect(qwenModels.map((m) => m.id)).toEqual([
       'qwen3.8-max',
       'qwen3.8-flash',
+      'qwen3.7-max',
       'qwen3.7-plus',
       'qwen3.7-flash',
     ]);
@@ -281,6 +286,7 @@ describe('Config Loader & Model Metadata', () => {
     expect(qwenModels[1].is1MContext).toBe(true);
     expect(qwenModels[2].is1MContext).toBe(true);
     expect(qwenModels[3].is1MContext).toBe(true);
+    expect(qwenModels[4].is1MContext).toBe(true);
   });
 
   it('should export ensureQingmeiEnvironment function', () => {

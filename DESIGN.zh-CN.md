@@ -298,10 +298,11 @@ sequenceDiagram
 | :--- | :--- | :--- | :--- | :--- |
 | **DeepSeek** | `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash`, `deepseek-v4-pro` | `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL` |
 | **Google Gemini** | `gemini` | `gemini-3.8-flash` | `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.1-pro-preview` | `GEMINI_API_KEY`, `GEMINI_BASE_URL` |
+| **Anthropic Claude** | `anthropic` | `claude-sonnet-4-6` | `claude-sonnet-4-6`, `claude-opus-4-6` | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` |
 | **OpenAI** | `openai` | `gpt-5.6-sol` | `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini` | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
 | **GLM / 智谱 AI** | `glm` | `GLM-5.3-Flash` | `GLM-5.3-Flash`, `GLM-5.3`, `GLM-5.2` | `ZHIPU_API_KEY`, `ZHIPU_BASE_URL` |
 | **Grok / xAI** | `grok` | `grok-4.6` | `grok-4.6`, `grok-4.5`, `grok-4.3` | `XAI_API_KEY`, `XAI_BASE_URL` |
-| **Qwen / 通义千问** | `qwen` | `qwen3.8-max` | `qwen3.8-max`, `qwen3.8-flash`, `qwen3.7-plus`, `qwen3.7-flash` | `DASHSCOPE_API_KEY`, `DASHSCOPE_BASE_URL` |
+| **Qwen / 通义千问** | `qwen` | `qwen3.8-max` | `qwen3.8-max`, `qwen3.8-flash`, `qwen3.7-max`, `qwen3.7-plus`, `qwen3.7-flash` | `DASHSCOPE_API_KEY`, `DASHSCOPE_BASE_URL` |
 
 ---
 
